@@ -1,0 +1,25 @@
+[Unit]
+Description=DRAKVUF Introspection for %I
+After=libvirtd.service
+Requires=libvirtd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/drakvuf \
+    -r %I \
+    -i /etc/drakvuf/inspector.json \
+    -k /var/lib/drakvuf/symbols/%I/system.map \
+    --json-file /var/log/drakvuf/%I.json \
+    --json-stats /var/log/drakvuf/%I-stats.json
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+MemoryMax=4G
+MemorySwapMax=1G
+CPUQuota=50%
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
