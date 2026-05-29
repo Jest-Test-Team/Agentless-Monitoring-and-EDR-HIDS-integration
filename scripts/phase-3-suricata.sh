@@ -3,8 +3,21 @@
 # Configures Suricata for Tier 0 port mirror monitoring
 set -euo pipefail
 
-MIRROR_INTERFACE="${1:-bond0.100}"
-TIER0_NETWORK="${2:-192.168.100.0/24}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+MIRROR_INTERFACE="${1:-${SURICATA_MIRROR_INTERFACE:-bond0.100}}"
+TIER0_NETWORK="${2:-${TIER0_NET:-192.168.100.0/24}}"
 
 echo "[*] Phase 3: Suricata NIDS Setup"
 echo "  Mirror interface: $MIRROR_INTERFACE"
