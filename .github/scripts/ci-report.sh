@@ -1,16 +1,19 @@
 #!/bin/bash
 # ci-report.sh — Generate CI report with coverage analysis and suggestions
+# Portable: uses files for storage instead of bash 4+ associative arrays
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
 REPORT_FILE="${1:-ci-report.md}"
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "[*] Generating CI report -> $REPORT_FILE"
 
 # ── Helper functions ──
-count_scripts() { find scripts -maxdepth 1 -name "*.sh" -o -name "*.py" 2>/dev/null | wc -l; }
+count_scripts() { find scripts -maxdepth 1 \( -name "*.sh" -o -name "*.py" \) 2>/dev/null | wc -l; }
 count_configs() { find configs -type f 2>/dev/null | wc -l; }
 count_docs() { ls docs/*.md 2>/dev/null | wc -l; }
 
@@ -36,47 +39,50 @@ TOTAL_DOCS=$(count_docs)
 BASH_SCRIPTS=$(find scripts -maxdepth 1 -name "*.sh" 2>/dev/null | wc -l)
 PYTHON_SCRIPTS=$(find scripts -maxdepth 1 -name "*.py" 2>/dev/null | wc -l)
 
-# Tier coverage analysis
+# Tier coverage analysis — store as tier_name|file1 file2 ... in temp files
 echo "[*] Analyzing tier coverage..."
-declare -A TIER_COVERAGE
-TIER_COVERAGE["Tier 0 (DRAKVUF+NIDS)"]="phase-0-check.sh phase-1-1-kvmi-kernel.sh phase-1-2-host-hardening.sh phase-1-3-dom0-monitoring.sh phase-2-1-drakvuf-install.sh phase-2-2-drakvuf-config.sh phase-2-3-vm-setup.sh phase-2-4-port-mirror.sh phase-3-suricata.sh phase-5-1-filebeat.sh check-vmi-compatibility.sh symbols-gate.sh fetch-linux-symbols.sh fetch-windows-symbols.py drakvuf-state-backup.sh drakvuf-migration-hook.sh"
-TIER_COVERAGE["Tier 1 (Wazuh+Osquery+Auditd)"]="phase-4-wazuh-deploy.sh phase-4-wazuh-manager.sh configs/auditd/rules.d/tier1-audit.rules run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py"
-TIER_COVERAGE["Tier 2 (Bare Metal HIDS)"]="phase-4-wazuh-deploy.sh configs/auditd/rules.d/tier2-audit.rules configs/aide/aide.conf phase-2-5-nftables-log.sh run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py"
-TIER_COVERAGE["Tier 3 (Dev/Test)"]="phase-4-wazuh-deploy.sh phase-4-1-rsyslog-tier3.sh configs/wazuh/ossec.conf.tier3"
-TIER_COVERAGE["Edge/IoT"]="deploy-edge-agent.sh configs/wazuh/ossec.conf.edge configs/docker/docker-compose.edge-agent.yml docs/EDGE-DEVICE-GUIDE.md build-offline-bundle.sh"
-TIER_COVERAGE["Central Stack"]="phase-5-1-filebeat.sh phase-5-2-logstash.sh phase-5-3-redis-buffer.sh phase-6-healthcheck.sh deploy.conf"
-TIER_COVERAGE["Ansible Multi-Host"]="ansible/site.yml ansible/playbooks/tier0-playbook.yml ansible/playbooks/tier1-playbook.yml ansible/playbooks/tier2-playbook.yml ansible/playbooks/tier3-playbook.yml ansible/inventory/hosts.ini deploy-all.sh"
+cat > "$TMPDIR/tiers" << 'TIERS'
+Tier 0 (DRAKVUF+NIDS)|phase-0-check.sh phase-1-1-kvmi-kernel.sh phase-1-2-host-hardening.sh phase-1-3-dom0-monitoring.sh phase-2-1-drakvuf-install.sh phase-2-2-drakvuf-config.sh phase-2-3-vm-setup.sh phase-2-4-port-mirror.sh phase-3-suricata.sh phase-5-1-filebeat.sh check-vmi-compatibility.sh symbols-gate.sh fetch-linux-symbols.sh fetch-windows-symbols.py drakvuf-state-backup.sh drakvuf-migration-hook.sh
+Tier 1 (Wazuh+Osquery+Auditd)|phase-4-wazuh-deploy.sh phase-4-wazuh-manager.sh configs/auditd/rules.d/tier1-audit.rules run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py
+Tier 2 (Bare Metal HIDS)|phase-4-wazuh-deploy.sh configs/auditd/rules.d/tier2-audit.rules configs/aide/aide.conf phase-2-5-nftables-log.sh run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py
+Tier 3 (Dev/Test)|phase-4-wazuh-deploy.sh phase-4-1-rsyslog-tier3.sh configs/wazuh/ossec.conf.tier3
+Edge/IoT|deploy-edge-agent.sh configs/wazuh/ossec.conf.edge configs/docker/docker-compose.edge-agent.yml docs/EDGE-DEVICE-GUIDE.md build-offline-bundle.sh
+Central Stack|phase-5-1-filebeat.sh phase-5-2-logstash.sh phase-5-3-redis-buffer.sh phase-6-healthcheck.sh deploy.conf
+Ansible Multi-Host|ansible/site.yml ansible/playbooks/tier0-playbook.yml ansible/playbooks/tier1-playbook.yml ansible/playbooks/tier2-playbook.yml ansible/playbooks/tier3-playbook.yml ansible/inventory/hosts.ini deploy-all.sh
+TIERS
 
 # ── Syntax validation ──
 echo "[*] Running syntax validation..."
+
+# Shell scripts
+echo "--- shell ---" > "$TMPDIR/bash.txt"
 BASH_FAIL=0
 BASH_TOTAL=0
-PY_FAIL=0
-PY_TOTAL=0
-YAML_FAIL=0
-YAML_TOTAL=0
-
-declare -A BASH_RESULTS
-declare -A PY_RESULTS
-declare -A YAML_RESULTS
-
 while IFS= read -r f; do
     result=$(check_bash_syntax "$f")
-    BASH_RESULTS["$f"]=$result
+    echo "$f|$result" >> "$TMPDIR/bash.txt"
     BASH_TOTAL=$((BASH_TOTAL + 1))
     [ "$result" = "FAIL" ] && BASH_FAIL=$((BASH_FAIL + 1))
 done < <(find scripts -maxdepth 1 -name "*.sh" 2>/dev/null)
 
+# Python scripts
+echo "--- python ---" > "$TMPDIR/python.txt"
+PY_FAIL=0
+PY_TOTAL=0
 while IFS= read -r f; do
     result=$(check_python_syntax "$f")
-    PY_RESULTS["$f"]=$result
+    echo "$f|$result" >> "$TMPDIR/python.txt"
     PY_TOTAL=$((PY_TOTAL + 1))
     [ "$result" = "FAIL" ] && PY_FAIL=$((PY_FAIL + 1))
 done < <(find scripts -maxdepth 1 -name "*.py" 2>/dev/null)
 
+# YAML files
+echo "--- yaml ---" > "$TMPDIR/yaml.txt"
+YAML_FAIL=0
+YAML_TOTAL=0
 while IFS= read -r f; do
     result=$(check_yaml_syntax "$f")
-    YAML_RESULTS["$f"]=$result
+    echo "$f|$result" >> "$TMPDIR/yaml.txt"
     YAML_TOTAL=$((YAML_TOTAL + 1))
     [ "$result" = "FAIL" ] && YAML_FAIL=$((YAML_FAIL + 1))
 done < <(find . -name "*.yml" -o -name "*.yaml" 2>/dev/null | grep -v node_modules | grep -v __pycache__)
@@ -84,7 +90,6 @@ done < <(find . -name "*.yml" -o -name "*.yaml" 2>/dev/null | grep -v node_modul
 # ── Generate suggestions ──
 SUGGESTIONS=""
 
-# Check for missing features
 if [ ! -f "scripts/phase-2-6-zeek.sh" ]; then
     SUGGESTIONS="${SUGGESTIONS}- [suggestion] Zeek NIDS alternative not yet scripted (see docs for manual setup)\n"
 fi
