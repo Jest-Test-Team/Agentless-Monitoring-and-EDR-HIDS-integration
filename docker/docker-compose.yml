@@ -51,7 +51,10 @@ services:
 
   # ── Logstash (Unified Pipeline) ──
   logstash:
-    image: docker.elastic.co/logstash/logstash:${LOGSTASH_VERSION:-8.15.0}
+    build:
+      context: ./logstash
+      args:
+        LOGSTASH_VERSION: ${LOGSTASH_VERSION:-7.17.24}
     container_name: os-logstash
     ports:
       - "5044:5044"
