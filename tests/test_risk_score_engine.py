@@ -3,8 +3,17 @@
 import json
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-from risk_score_engine import compute_overall_risk
+import importlib.util
+
+FIXTURES_DIR = os.path.join(os.path.dirname(__file__), 'fixtures')
+SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'scripts')
+
+# Import risk-score-engine.py (has hyphen, so use importlib)
+engine_path = os.path.join(SCRIPTS_DIR, 'risk-score-engine.py')
+spec = importlib.util.spec_from_file_location("risk_score_engine", engine_path)
+risk_score_engine = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(risk_score_engine)
+compute_overall_risk = risk_score_engine.compute_overall_risk
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), 'fixtures')
 
