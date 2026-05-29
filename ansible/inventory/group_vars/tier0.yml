@@ -1,0 +1,12 @@
+---
+# Tier 0 specific variables
+tier_label: "tier0"
+suricata_mirror_interface: "bond0.100"
+suricata_cluster_id: 99
+min_memory_gb: 32
+min_root_disk_gb: 100
+kvmi_supported_kernels:
+  - "5.4"
+  - "5.10"
+  - "5.15"
+  - "6.1"
