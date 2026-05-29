@@ -2,7 +2,20 @@
 # Phase 4: Wazuh Agent Deployment (Tier 1/2/3)
 set -euo pipefail
 
-WAZUH_MANAGER="${1:-10.0.0.30}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+WAZUH_MANAGER="${1:-${WAZUH_MANAGER:-10.0.0.30}}"
 TIER="${2:-tier1}"  # tier1, tier2, tier3
 
 echo "[*] Phase 4: Wazuh Agent Deployment (Tier: $TIER)"
@@ -18,6 +31,42 @@ fi
 # Tier-specific configuration
 case "$TIER" in
     tier1)
+        # Tier 1: Wazuh Agent + Osquery + Auditd (internal service VM)
+        if ! rpm -q osquery &>/dev/null; then
+            dnf install -y osquery
+        fi
+        cat > /etc/osquery/osquery.conf << 'OSQ'
+{
+  "schedule": {
+    "kernel_modules": {
+      "query": "SELECT name, size, used_by, status FROM kernel_modules;",
+      "interval": 300
+    },
+    "listening_ports": {
+      "query": "SELECT pid, port, protocol, address FROM listening_ports;",
+      "interval": 60
+    },
+    "process_events": {
+      "query": "SELECT pid, path, cmdline, time FROM process_events;",
+      "interval": 120
+    },
+    "suid_binaries": {
+      "query": "SELECT path FROM suid_binaries;",
+      "interval": 86400
+    },
+    "crontab": {
+      "query": "SELECT * FROM crontab;",
+      "interval": 3600
+    },
+    "authorized_keys": {
+      "query": "SELECT * FROM authorized_keys;",
+      "interval": 3600
+    }
+  }
+}
+OSQ
+        systemctl enable --now osquery
+
         cat > /var/ossec/etc/ossec.conf << 'OSSEC'
 <ossec_config>
   <client>
