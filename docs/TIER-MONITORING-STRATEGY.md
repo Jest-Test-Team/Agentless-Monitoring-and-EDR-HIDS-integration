@@ -34,7 +34,7 @@
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Wazuh Agent  │  Osquery  │  Auditd  │  Sysmon (Win)    │   │
 │  │  + FW rules   │  + Rootkit │  + File  │  + Process tree  │   │
-│  │               │   detect   │   integrity                 │   │
+│  │  + Risk Scanner │   detect  │   integrity + Lynis         │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │  流量規模: ~10-30 GB/day per host                                 │
 ├─────────────────────────────────────────────────────────────────┤
