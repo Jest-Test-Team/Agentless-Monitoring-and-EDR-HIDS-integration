@@ -1,0 +1,8 @@
+---
+# Tier 2 specific variables
+tier_label: "tier2"
+wazuh_tier: "tier2"
+install_osquery: true
+install_auditd: true
+install_aide: true
+install_nftables_logging: true

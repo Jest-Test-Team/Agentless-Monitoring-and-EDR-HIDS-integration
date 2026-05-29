@@ -1,0 +1,6 @@
+---
+# Tier 3 specific variables
+tier_label: "tier3"
+wazuh_tier: "tier3"
+install_rsyslog_direct: true
+rsyslog_logstash_port: 5514

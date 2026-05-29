@@ -1,0 +1,6 @@
+---
+# Tier 1 specific variables
+tier_label: "tier1"
+wazuh_tier: "tier1"
+install_osquery: true
+install_auditd: true
