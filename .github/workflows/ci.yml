@@ -181,21 +181,19 @@ jobs:
           echo "::group::JSON fixture validation"
           for f in tests/fixtures/*.json; do
             if [ -f "$f" ]; then
-              python3 << 'EOF'
-import json
-import sys
-for fname in ['$f']:
-    with open(fname) as fp:
-        for i, line in enumerate(fp, 1):
-            line = line.strip()
-            if line:
-                try:
-                    json.loads(line)
-                except json.JSONDecodeError as e:
-                    print(f'  ❌ {fname}:{i} — {e}')
-                    sys.exit(1)
-        print(f'  ✅ {fname} — all lines valid JSON')
-EOF
+              python3 -c "
+import json, sys
+with open('$f') as fp:
+    for i, line in enumerate(fp, 1):
+        line = line.strip()
+        if line:
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f'  ❌ ${f}:{i} — {e}')
+                sys.exit(1)
+print(f'  ✅ ${f} — all lines valid JSON')
+"
             fi
           done
           echo "::endgroup::"
