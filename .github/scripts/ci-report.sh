@@ -161,9 +161,10 @@ REPORT
 
 if [ "$BASH_FAIL" -gt 0 ]; then
     echo "**${BASH_FAIL}/${BASH_TOTAL} scripts FAILED syntax check**" >> "$REPORT_FILE"
-    for f in "${!BASH_RESULTS[@]}"; do
-        [ "${BASH_RESULTS[$f]}" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
-    done
+    while IFS='|' read -r f result; do
+        case "$f" in ---*) continue ;; esac
+        [ "$result" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
+    done < "$TMPDIR/bash.txt"
 else
     echo "**All ${BASH_TOTAL} shell scripts pass syntax check** ✅" >> "$REPORT_FILE"
 fi
