@@ -44,13 +44,23 @@ fi
 systemctl restart sshd
 
 # 2. Firewall (Tier 0)
+MGMT_NET="${MANAGEMENT_NET:-10.0.0.0/24}"
 if command -v firewall-cmd &>/dev/null; then
-    firewall-cmd --permanent --zone=trusted --add-source=10.0.0.0/24
-    firewall-cmd --permanent --zone=trusted --add-port=22/tcp
-    firewall-cmd --permanent --zone=trusted --add-port=16509/tcp
-    firewall-cmd --permanent --zone=trusted --add-port=5900-5910/tcp
+    # Management access
+    firewall-cmd --permanent --zone=trusted --add-source="$MGMT_NET"
+    firewall-cmd --permanent --zone=trusted --add-port="${SSH_PORT:-22}/tcp"
+    firewall-cmd --permanent --zone=trusted --add-port="${LIBVIRT_TLS_PORT:-16509}/tcp"
+    firewall-cmd --permanent --zone=trusted --add-port="${VNC_PORT_RANGE:-5900-5910}/tcp"
+    # Log pipeline ports
+    firewall-cmd --permanent --zone=trusted --add-port="${LOGSTASH_BEATS_PORT:-5044}/tcp"
+    firewall-cmd --permanent --zone=trusted --add-port="${OPENSEARCH_API_PORT:-9200}/tcp"
+    # Wazuh ports
+    firewall-cmd --permanent --zone=trusted --add-port="${WAZUH_AGENT_PORT:-1514}/tcp"
+    firewall-cmd --permanent --zone=trusted --add-port="${WAZUH_CLUSTER_PORT:-1515}/tcp"
+    # Redis buffer
+    firewall-cmd --permanent --zone=trusted --add-port="${REDIS_PORT:-6379}/tcp"
     firewall-cmd --reload
-    echo "[+] Firewall configured"
+    echo "[+] Firewall configured (management net: $MGMT_NET)"
 fi
 
 # 3. SELinux Policy
