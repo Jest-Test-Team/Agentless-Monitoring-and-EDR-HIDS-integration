@@ -2,7 +2,20 @@
 # Phase 5.1: Filebeat Configuration (Tier 0 Host - DRAKVUF JSON shipping)
 set -euo pipefail
 
-LOGSTASH_HOST="${1:-10.0.0.20}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+LOGSTASH_HOST="${1:-${LOGSTASH_HOSTS%:*}}"
 
 echo "[*] Phase 5.1: Filebeat Configuration"
 echo "  Logstash target: $LOGSTASH_HOST:5044"
