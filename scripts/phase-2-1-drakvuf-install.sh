@@ -2,6 +2,19 @@
 # Phase 2.1: DRAKVUF & LibVMI Build/Install
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
 LIBVMI_REPO="https://github.com/libvmi/libvmi.git"
 DRAKVUF_REPO="https://github.com/tklengyel/drakvuf.git"
 INSTALL_PREFIX="/usr/local"
