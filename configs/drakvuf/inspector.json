@@ -1,0 +1,21 @@
+{
+    "inject_jitter": true,
+    "jitter_min_us": 50,
+    "jitter_max_us": 500,
+    "memory_access_monitoring": {
+        "enabled": true,
+        "mode": "sampling",
+        "sample_interval_ms": 5000,
+        "sample_duration_ms": 100,
+        "sample_regions": ["kernel_text", "module_text", "process_text"]
+    },
+    "syscalls": [
+        "execve", "execveat", "fork", "clone", "clone3",
+        "init_module", "finit_module", "delete_module",
+        "connect", "bind", "socket",
+        "ptrace", "process_vm_writev", "process_vm_readv",
+        "open", "creat", "unlink", "rename", "write"
+    ],
+    "strategy": "whitelist",
+    "default_action": "pass"
+}
