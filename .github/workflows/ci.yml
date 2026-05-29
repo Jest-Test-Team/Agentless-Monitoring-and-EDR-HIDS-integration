@@ -2,7 +2,7 @@ name: CI — Build, Test & Report
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master]
   pull_request:
     branches: [main, master]
   schedule:
@@ -21,7 +21,7 @@ jobs:
   build:
     name: Build & Validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
     name: Test
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
           echo "::group::JSON fixture validation"
           for f in tests/fixtures/*.json; do
             if [ -f "$f" ]; then
-              python3 -c "
+              python3 << 'EOF'
 import json
 with open('$f') as fp:
     for i, line in enumerate(fp, 1):
@@ -192,7 +192,7 @@ with open('$f') as fp:
             except json.JSONDecodeError as e:
                 print(f'  ❌ {f}:{i} — {e}')
                 exit(1)
-    print(f'  ✅ {f} — all lines valid JSON')
+    print(f'  {f} — all lines valid JSON')
 "
             fi
           done

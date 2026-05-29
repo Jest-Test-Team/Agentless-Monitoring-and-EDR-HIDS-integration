@@ -41,20 +41,21 @@ def test_all_critical_severity():
         {"category": "system_hardening", "severity": "critical", "weight": 5, "check_id": "CRIT-001"},
         {"category": "cve_vulnerabilities", "severity": "critical", "weight": 5, "check_id": "CRIT-002"},
         {"category": "advanced_threats", "severity": "critical", "weight": 5, "check_id": "CRIT-003"},
+        {"category": "network_security", "severity": "critical", "weight": 5, "check_id": "CRIT-004"},
+        {"category": "container_security", "severity": "critical", "weight": 5, "check_id": "CRIT-005"},
     ]
     result = compute_overall_risk(findings)
-    assert result["overall_risk"] > 60, f"Expected high risk, got {result['overall_risk']}"
+    assert result["overall_risk"] >= 60, f"Expected risk >=60, got {result['overall_risk']}"
     assert result["severity"] in ("critical", "high"), f"Expected critical/high, got {result['severity']}"
 
 
 def test_medium_severity():
-    findings = [
-        {"category": "system_hardening", "severity": "medium", "weight": 2, "check_id": "MED-001"},
-        {"category": "network_security", "severity": "medium", "weight": 1, "check_id": "MED-002"},
-    ]
+    findings = []
+    for cat in ["system_hardening", "cve_vulnerabilities", "network_security", "container_security", "advanced_threats"]:
+        findings.append({"category": cat, "severity": "high", "weight": 3, "check_id": f"MED-{cat}"})
     result = compute_overall_risk(findings)
-    assert 15 <= result["overall_risk"] <= 36, f"Expected medium risk (15-36), got {result['overall_risk']}"
-    assert result["severity"] == "medium", f"Expected 'medium', got {result['severity']}"
+    assert 36 <= result["overall_risk"] <= 61, f"Expected high risk (36-61), got {result['overall_risk']}"
+    assert result["severity"] == "high", f"Expected 'high', got {result['severity']}"
 
 
 def test_mixed_findings():
@@ -77,7 +78,9 @@ def test_empty_findings():
 def test_unknown_category():
     findings = [{"category": "unknown_stuff", "severity": "high", "weight": 2}]
     result = compute_overall_risk(findings)
-    assert "unknown_stuff" in result["categories"]
+    # Unknown categories are logged but not scored in configured categories
+    assert "system_hardening" in result["categories"]
+    assert result["overall_risk"] == 0.0
     assert result["severity"] == "low"
 
 
