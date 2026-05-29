@@ -55,7 +55,7 @@ services:
     container_name: os-logstash
     ports:
       - "5044:5044"
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - LS_JAVA_OPTS=${LOGSTASH_JAVA_OPTS:- -Xms512m -Xmx512m}
       - XPACK_MONITORING_ENABLED=false
