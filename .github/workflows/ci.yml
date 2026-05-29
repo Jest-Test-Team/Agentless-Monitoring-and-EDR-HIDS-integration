@@ -157,8 +157,16 @@ jobs:
             fi
           done
           echo "::endgroup::"
+        id: risk_lib_validation
 
       - name: Validate Logstash pipeline configs
+        run: |
+          echo "::group::Logstash pipeline config validation"
+          python3 tests/test_logstash_pipeline.py
+          echo "::endgroup::"
+        id: logstash_tests
+
+      - name: Validate Logstash pipeline configs (logstash -t)
         run: |
           echo "::group::Logstash pipeline validation"
           if command -v logstash &>/dev/null; then

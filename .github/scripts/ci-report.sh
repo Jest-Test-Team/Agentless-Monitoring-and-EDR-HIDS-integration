@@ -42,7 +42,7 @@ PYTHON_SCRIPTS=$(find scripts -maxdepth 1 -name "*.py" 2>/dev/null | wc -l)
 # Tier coverage analysis — store as tier_name|file1 file2 ... in temp files
 echo "[*] Analyzing tier coverage..."
 cat > "$TMPDIR/tiers" << 'TIERS'
-Tier 0 (DRAKVUF+NIDS)|phase-0-check.sh phase-1-1-kvmi-kernel.sh phase-1-2-host-hardening.sh phase-1-3-dom0-monitoring.sh phase-2-1-drakvuf-install.sh phase-2-2-drakvuf-config.sh phase-2-3-vm-setup.sh phase-2-4-port-mirror.sh phase-3-suricata.sh phase-5-1-filebeat.sh check-vmi-compatibility.sh symbols-gate.sh fetch-linux-symbols.sh fetch-windows-symbols.py drakvuf-state-backup.sh drakvuf-migration-hook.sh
+Tier 0 (DRAKVUF+NIDS)|phase-0-check.sh phase-1-1-kvmi-kernel.sh phase-1-2-host-hardening.sh phase-1-3-dom0-monitoring.sh phase-2-1-drakvuf-install.sh phase-2-2-drakvuf-config.sh phase-2-3-vm-setup.sh phase-2-4-port-mirror.sh phase-2-6-zeek.sh phase-3-suricata.sh phase-5-1-filebeat.sh check-vmi-compatibility.sh symbols-gate.sh fetch-linux-symbols.sh fetch-windows-symbols.py drakvuf-state-backup.sh drakvuf-migration-hook.sh
 Tier 1 (Wazuh+Osquery+Auditd)|phase-4-wazuh-deploy.sh phase-4-wazuh-manager.sh configs/auditd/rules.d/tier1-audit.rules run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py
 Tier 2 (Bare Metal HIDS)|phase-4-wazuh-deploy.sh configs/auditd/rules.d/tier2-audit.rules configs/aide/aide.conf phase-2-5-nftables-log.sh run-risk-scanner.sh risk-scanner.sh risk-lib.sh risk-score-engine.py
 Tier 3 (Dev/Test)|phase-4-wazuh-deploy.sh phase-4-1-rsyslog-tier3.sh configs/wazuh/ossec.conf.tier3
@@ -90,11 +90,8 @@ done < <(find . -name "*.yml" -o -name "*.yaml" 2>/dev/null | grep -v node_modul
 # ── Generate suggestions ──
 SUGGESTIONS=""
 
-if [ ! -f "scripts/phase-2-6-zeek.sh" ]; then
-    SUGGESTIONS="${SUGGESTIONS}- [suggestion] Zeek NIDS alternative not yet scripted (see docs for manual setup)\n"
-fi
-if ! grep -q "Sysmon" docs/*.md 2>/dev/null; then
-    SUGGESTIONS="${SUGGESTIONS}- [info] Windows Sysmon guide exists in docs/WINDOWS-TIER2.md\n"
+if [ ! -f "scripts/phase-3-suricata.sh" ]; then
+    SUGGESTIONS="${SUGGESTIONS}- [info] Both Suricata and Zeek NIDS scripts available (phase-3-suricata.sh, phase-2-6-zeek.sh)\n"
 fi
 if [ ! -f "tests/test_logstash_pipeline.py" ]; then
     SUGGESTIONS="${SUGGESTIONS}- [suggestion] Add Logstash pipeline unit tests (validate config parsing)\n"
