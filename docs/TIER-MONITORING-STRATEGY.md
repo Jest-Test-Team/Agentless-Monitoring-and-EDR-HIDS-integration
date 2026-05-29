@@ -26,6 +26,7 @@
 │  │  File/Reg     │  SQL      │  audit rules                │   │
 │  │  Process      │  live     │  syscall filter             │   │
 │  │  Network      │  query    │  immutable config            │   │
+│  │  Risk Scanner │ 每日全掃  │  JSON → Filebeat → OS          │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │  流量規模: ~5-20 GB/day per VM                                   │
 ├─────────────────────────────────────────────────────────────────┤
