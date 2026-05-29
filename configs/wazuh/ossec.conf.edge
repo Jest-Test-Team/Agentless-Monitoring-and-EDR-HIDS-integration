@@ -1,0 +1,26 @@
+<!-- Edge device Wazuh agent config — rootcheck only, 256MB memory limit -->
+<ossec_config>
+  <client>
+    <server>
+      <address>WAZUH_MANAGER_PLACEHOLDER</address>
+      <port>1514</port>
+      <protocol>TCP</protocol>
+    </server>
+  </client>
+
+  <rootcheck>
+    <frequency>7200</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+  </rootcheck>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/messages</location>
+  </localfile>
+
+  <global>
+    <memory_limit>256</memory_limit>
+    <max_eps>50</max_eps>
+  </global>
+</ossec_config>
