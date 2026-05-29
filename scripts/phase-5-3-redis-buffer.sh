@@ -24,16 +24,26 @@ echo "========================================"
 
 dnf install -y redis
 
-cat > /etc/redis/redis-tier0.conf << 'RCONF'
-bind 0.0.0.0
-port 6379
+if [ -n "${REDIS_AUTH_PASSWORD:-}" ]; then
+    AUTH_LINE="requirepass ${REDIS_AUTH_PASSWORD}"
+    echo "[*] Redis auth enabled (set REDIS_AUTH_PASSWORD to configure)"
+else
+    AUTH_LINE="# requirepass <set-REDIS_AUTH_PASSWORD-in-deploy.conf>"
+    echo "[!] Redis auth not configured. Set REDIS_AUTH_PASSWORD in production."
+fi
+
+cat > /etc/redis/redis-tier0.conf << RCONF
+bind ${REDIS_BIND}
+port ${REDIS_PORT}
 daemonize no
 supervised systemd
 loglevel notice
 logfile /var/log/redis/redis-tier0.log
 
-# Memory management (10GB max, LRU eviction)
-maxmemory 10gb
+${AUTH_LINE}
+
+# Memory management (${REDIS_MAXMEMORY} max, LRU eviction)
+maxmemory ${REDIS_MAXMEMORY}
 maxmemory-policy allkeys-lru
 maxmemory-samples 10
 
