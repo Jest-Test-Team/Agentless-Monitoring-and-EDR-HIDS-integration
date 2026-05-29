@@ -379,16 +379,16 @@ write_findings_json() {
     local output_file="$1"
     local hostname="$2"
     local tier="$3"
-    local overall_risk="${4:-0}"
-    local severity="${5:-unknown}"
 
     local json
     json=$(python3 /usr/local/bin/risk-score-engine.py \
         --findings <(printf '%s\n' "${FINDINGS[@]}") \
         --hostname "$hostname" \
         --tier "$tier")
-    overall_risk=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('overall_risk', 0))")
-    severity=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('severity', 'unknown'))")
+    local overall_risk
+    overall_risk=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('overall_risk', 0))" 2>/dev/null || echo "0")
+    local severity
+    severity=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('severity', 'unknown'))" 2>/dev/null || echo "unknown")
     echo "$json" > "$output_file"
     echo "  [*] Risk score written to: $output_file"
     echo "  [*] Overall risk: $overall_risk ($severity)"
