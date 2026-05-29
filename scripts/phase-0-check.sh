@@ -3,6 +3,19 @@
 # Run this on every potential Tier 0 Host before deployment
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -40,20 +53,27 @@ if [ "$CPU_VENDOR" == "GenuineIntel" ]; then
 elif [ "$CPU_VENDOR" == "AuthenticAMD" ]; then
     check "CPU Vendor: AMD (VMI support experimental)" 2
     grep -q 'svm' /proc/cpuinfo && check "AMD SVM supported" 0 || check "AMD SVM supported" 1
+    echo -e "${YELLOW}[WARN]${NC} AMD EPYC: Altp2m unavailable (Intel-only feature)"
+    echo "  This host can only run Tier 1/2 (not Tier 0 DRAKVUF VMI)"
+    WARN=$((WARN+1))
 else
     check "CPU Vendor: $CPU_VENDOR" 1
 fi
 
 # Kernel
 KERNEL=$(uname -r)
-KVMI_SUPPORTED="5.4 5.10 5.15 6.1"
+KVMI_SUPPORTED="${KVMI_SUPPORTED_KERNELS:-5.4 5.10 5.15 6.1}"
+KERNEL_MATCHED=0
 for ver in $KVMI_SUPPORTED; do
     if echo "$KERNEL" | grep -q "^$ver"; then
         check "Kernel version $KERNEL (KVMI compatible)" 0
+        KERNEL_MATCHED=1
         break
     fi
 done
-check "KVMI kernel patch required (current: $KERNEL)" 2
+if [ "$KERNEL_MATCHED" -eq 0 ]; then
+    check "KVMI kernel patch required (current: $KERNEL)" 2
+fi
 
 # KVM module
 [ -d /sys/module/kvm ] && check "KVM module loaded" 0 || check "KVM module loaded" 1
