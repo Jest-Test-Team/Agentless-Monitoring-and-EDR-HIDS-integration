@@ -3,6 +3,19 @@
 # Builds a patched kernel with KVM introspection support
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
 KVMI_REPO="https://github.com/KVM-VMI/kvm-vmi.git"
 KVMI_BRANCH="linux-5.15.y"
 KERNEL_VERSION="5.15.164"
