@@ -61,7 +61,7 @@ services:
       - XPACK_MONITORING_ENABLED=false
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
-      - ../docker/logs:/var/log/agentless:ro
+      - ./logs:/var/log/agentless:ro
     depends_on:
       opensearch:
         condition: service_healthy
