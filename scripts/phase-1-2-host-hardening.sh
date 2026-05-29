@@ -1,0 +1,113 @@
+#!/bin/bash
+# Phase 1.2: Host OS Hardening
+# Run on Dom0 / Tier 0 Host after KVMI kernel boot
+set -euo pipefail
+
+echo "[*] Phase 1.2: Host OS Hardening"
+echo "========================================"
+
+# 1. SSH Hardening
+cat > /etc/ssh/sshd_config.d/hardening.conf << 'SSH'
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 2
+AuthenticationMethods publickey
+LogLevel VERBOSE
+SSH
+
+# Generate host keys if missing
+if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
+    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
+fi
+systemctl restart sshd
+
+# 2. Firewall (Tier 0)
+if command -v firewall-cmd &>/dev/null; then
+    firewall-cmd --permanent --zone=trusted --add-source=10.0.0.0/24
+    firewall-cmd --permanent --zone=trusted --add-port=22/tcp
+    firewall-cmd --permanent --zone=trusted --add-port=16509/tcp
+    firewall-cmd --permanent --zone=trusted --add-port=5900-5910/tcp
+    firewall-cmd --reload
+    echo "[+] Firewall configured"
+fi
+
+# 3. SELinux Policy
+if command -v checkmodule &>/dev/null; then
+    TE_FILE="/tmp/drakvuf.te"
+    cat > "$TE_FILE" << 'SELINUX'
+module drakvuf 1.0;
+require {
+    type drakvuf_t;
+    type virtd_t;
+    class process { signal };
+    class file { read write };
+}
+allow drakvuf_t self:process { signal };
+allow drakvuf_t virtd_t:file { read write };
+SELINUX
+    checkmodule -M -m -o /tmp/drakvuf.mod "$TE_FILE"
+    semodule_package -o /tmp/drakvuf.pp -m /tmp/drakvuf.mod
+    semodule -i /tmp/drakvuf.pp
+    rm -f /tmp/drakvuf.{te,mod,pp}
+    echo "[+] SELinux policy loaded"
+fi
+
+# 4. Auditd Rules
+cat > /etc/audit/rules.d/host-hardening.rules << 'AUDIT'
+# DRAKVUF monitoring
+-w /usr/local/bin/drakvuf -p wa -k drakvuf_binary
+-w /etc/drakvuf/ -p wa -k drakvuf_config
+-w /dev/kvmi -p rwa -k kvmi_device
+
+# Filebeat
+-w /etc/filebeat/ -p wa -k filebeat_config
+
+# SSH
+-w /var/log/secure -p wa -k ssh_login
+-w /etc/ssh/sshd_config -p wa -k ssh_config
+
+# Critical files
+-w /etc/passwd -p wa -k passwd_change
+-w /etc/shadow -p wa -k shadow_change
+-w /etc/sudoers -p wa -k sudoers_change
+
+# Process signals (SIGKILL/SIGTERM to DRAKVUF)
+-a exit,always -F arch=b64 -S kill -F pid=1 -k drakvuf_signal
+
+# Kernel module loading
+-w /sbin/insmod -p x -k kernel_module
+-w /sbin/modprobe -p x -k kernel_module
+AUDIT
+augenrules --load
+systemctl restart auditd
+echo "[+] Auditd rules loaded"
+
+# 5. Sysctl hardening
+cat > /etc/sysctl.d/99-hardening.conf << 'SYSCTL'
+# Network hardening
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+
+# Kernel hardening
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+kernel.printk = 3 3 3 3
+kernel.unprivileged_bpf_disabled = 1
+kernel.kexec_load_disabled = 1
+
+# OOM
+vm.overcommit_memory = 2
+vm.overcommit_ratio = 50
+SYSCTL
+sysctl --system
+
+echo "[*] Host hardening complete. Reboot recommended."
+echo "    Verify: auditctl -l | grep drakvuf"
