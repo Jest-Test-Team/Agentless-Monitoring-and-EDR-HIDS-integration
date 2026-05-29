@@ -1,0 +1,40 @@
+# OpenSearch Security Roles
+# These are applied via the security plugin when enabled.
+# In dev mode (plugins.security.disabled=true), these are informational.
+
+_vmi_admin:
+  reserved: false
+  hidden: false
+  cluster_permissions:
+    - cluster_composite_ops_ro
+  index_permissions:
+    - index_patterns:
+        - "security-events-*"
+      allowed_actions:
+        - "read"
+        - "view_index_metadata"
+      field_level_security:
+        - "~[process][command_line]"
+        - "~[memory][*]"
+
+_soc_analyst:
+  reserved: false
+  hidden: false
+  index_permissions:
+    - index_patterns:
+        - "security-events-*"
+      allowed_actions:
+        - "read"
+        - "view_index_metadata"
+
+_compliance_auditor:
+  reserved: true
+  hidden: false
+  cluster_permissions:
+    - cluster_admin
+  index_permissions:
+    - index_patterns:
+        - "security-events-*"
+      allowed_actions:
+        - "read"
+        - "view_index_metadata"
