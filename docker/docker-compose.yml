@@ -7,7 +7,6 @@ services:
     container_name: os-security-events
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true
       - DISABLE_SECURITY_PLUGIN=true
       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS:- -Xms1g -Xmx1g}
       - bootstrap.memory_lock=true
