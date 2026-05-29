@@ -1,0 +1,5 @@
+{"TimeStamp":"2025-05-29T10:00:01.000Z","VMName":"prd-db-01","ProcessId":1234,"ParentProcessId":1,"Image":"/usr/bin/sshd","CommandLine":"sshd -D","EventId":1,"log_type":"drakvuf"}
+{"TimeStamp":"2025-05-29T10:00:02.000Z","VMName":"prd-db-01","ProcessId":1235,"ParentProcessId":1234,"Image":"/usr/bin/bash","CommandLine":"bash -c \"whoami\"","EventId":1,"log_type":"drakvuf"}
+{"src_ip":"10.0.0.50","src_port":54321,"dest_ip":"203.0.113.5","dest_port":443,"proto":"TCP","alert":{"signature":"ET MALWARE Suspicious HTTP Request","severity":2},"event_type":"alert","log_type":"suricata"}
+{"src_ip":"10.0.0.50","src_port":12345,"dest_ip":"8.8.8.8","dest_port":53,"proto":"UDP","dns":{"query":"evil.example.com","type":"A"},"event_type":"dns","log_type":"suricata"}
+{"host":"bm-host-01","tier":"tier2","timestamp":"2025-05-29T02:00:00Z","overall_risk":45.2,"severity":"high","categories":{"system_hardening":{"score":25.0,"max":150,"checks_total":45,"checks_passed":30,"critical_findings":2}},"log_type":"risk_scan"}
