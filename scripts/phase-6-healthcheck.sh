@@ -121,13 +121,15 @@ cat > /etc/cron.d/healthcheck << 'CRON'
 0 */6 * * * root /usr/local/bin/healthcheck-all.sh --alert
 CRON
 
-# OpenSearch ISM policy for log retention
+# OpenSearch ISM policy for log retention (tier-configurable)
 mkdir -p /etc/opensearch
-cat > /etc/opensearch/ism-policy.json << 'ISM'
+
+# Tier 0: 365 days retention
+cat > /etc/opensearch/ism-policy-tier0.json << 'ISM0'
 {
   "policy": {
-    "policy_id": "security-events-retention",
-    "description": "Retention by tier",
+    "policy_id": "security-events-retention-tier0",
+    "description": "Tier 0 retention: 365 days",
     "default_state": "hot",
     "states": [
       {
@@ -146,7 +148,88 @@ cat > /etc/opensearch/ism-policy.json << 'ISM'
     ]
   }
 }
-ISM
+ISM0
+
+# Tier 1: 90 days retention
+cat > /etc/opensearch/ism-policy-tier1.json << 'ISM1'
+{
+  "policy": {
+    "policy_id": "security-events-retention-tier1",
+    "description": "Tier 1 retention: 90 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [{
+          "rollover": { "min_size": "50gb", "min_index_age": "1d" }
+        }],
+        "transitions": [{ "state_name": "warm", "conditions": { "min_index_age": "3d" } }]
+      },
+      {
+        "name": "warm",
+        "actions": [],
+        "transitions": [{ "state_name": "delete", "conditions": { "min_index_age": "90d" } }]
+      },
+      { "name": "delete", "actions": [{ "delete": {} }] }
+    ]
+  }
+}
+ISM1
+
+# Tier 2: 365 days retention (bare metal, high value)
+cat > /etc/opensearch/ism-policy-tier2.json << 'ISM2'
+{
+  "policy": {
+    "policy_id": "security-events-retention-tier2",
+    "description": "Tier 2 retention: 365 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [{
+          "rollover": { "min_size": "50gb", "min_index_age": "1d" }
+        }],
+        "transitions": [{ "state_name": "warm", "conditions": { "min_index_age": "7d" } }]
+      },
+      {
+        "name": "warm",
+        "actions": [],
+        "transitions": [{ "state_name": "delete", "conditions": { "min_index_age": "365d" } }]
+      },
+      { "name": "delete", "actions": [{ "delete": {} }] }
+    ]
+  }
+}
+ISM2
+
+# Tier 3: 30 days retention (dev/test)
+cat > /etc/opensearch/ism-policy-tier3.json << 'ISM3'
+{
+  "policy": {
+    "policy_id": "security-events-retention-tier3",
+    "description": "Tier 3 retention: 30 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [{
+          "rollover": { "min_size": "20gb", "min_index_age": "1d" }
+        }],
+        "transitions": [{ "state_name": "warm", "conditions": { "min_index_age": "1d" } }]
+      },
+      {
+        "name": "warm",
+        "actions": [],
+        "transitions": [{ "state_name": "delete", "conditions": { "min_index_age": "30d" } }]
+      },
+      { "name": "delete", "actions": [{ "delete": {} }] }
+    ]
+  }
+}
+ISM3
+
+echo "[+] ISM policies generated for all tiers"
+echo "    Apply via curl: curl -X PUT 'http://OPENSEARCH_HOST:9200/_plugins/_ism/policies/security-events-retention-tier0' -H 'Content-Type: application/json' -d @/etc/opensearch/ism-policy-tier0.json"
 
 # Loki/Promtail alternative monitoring
 cat > /etc/promtail/promtail.yml << 'PROMTAIL' || true
