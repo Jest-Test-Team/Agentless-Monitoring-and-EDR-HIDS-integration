@@ -10,7 +10,7 @@ CATEGORY=""
 # ── Helpers ──
 
 log_finding() {
-    local severity="$1       check_id="$2" description="$3" weight="$4" detail="$5" recommendation="$6"
+    local severity="$1" check_id="$2" description="$3" weight="$4" detail="$5" recommendation="$6"
     FINDINGS+=("$(cat <<-EOF
 {"severity":"$severity","check_id":"$check_id","description":"$description","weight":$weight,"category":"$CATEGORY","detail":"$(echo "$detail" | sed 's/"/\\"/g')","recommendation":"$(echo "$recommendation" | sed 's/"/\\"/g')"}
 EOF
