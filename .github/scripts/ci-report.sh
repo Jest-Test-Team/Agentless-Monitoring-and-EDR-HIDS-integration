@@ -130,8 +130,7 @@ cat > "$REPORT_FILE" << REPORT
 |------|--------|----------------|
 REPORT
 
-for tier in "Tier 0 (DRAKVUF+NIDS)" "Tier 1 (Wazuh+Osquery+Auditd)" "Tier 2 (Bare Metal HIDS)" "Tier 3 (Dev/Test)" "Edge/IoT" "Central Stack" "Ansible Multi-Host"; do
-    components="${TIER_COVERAGE[$tier]}"
+while IFS='|' read -r tier components; do
     present=0
     missing=0
     missing_list=""
@@ -151,7 +150,7 @@ for tier in "Tier 0 (DRAKVUF+NIDS)" "Tier 1 (Wazuh+Osquery+Auditd)" "Tier 2 (Bar
     fi
     [ "$missing" -gt 0 ] && status="⚠️ ${pct}%" || status="✅ Complete"
     echo "| $tier | $status | ${present}/${total} files present${missing_list:+ (missing: ${missing_list})} |" >> "$REPORT_FILE"
-done
+done < "$TMPDIR/tiers"
 
 cat >> "$REPORT_FILE" << REPORT
 
