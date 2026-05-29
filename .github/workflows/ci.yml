@@ -179,23 +179,7 @@ jobs:
       - name: Validate JSON fixtures
         run: |
           echo "::group::JSON fixture validation"
-          for f in tests/fixtures/*.json; do
-            if [ -f "$f" ]; then
-              python3 << 'EOF'
-import json
-with open('$f') as fp:
-    for i, line in enumerate(fp, 1):
-        line = line.strip()
-        if line:
-            try:
-                json.loads(line)
-            except json.JSONDecodeError as e:
-                print(f'  ❌ {f}:{i} — {e}')
-                exit(1)
-    print(f'  {f} — all lines valid JSON')
-"
-            fi
-          done
+          python3 tests/test_json_fixtures.py
           echo "::endgroup::"
 
       - name: Docker Compose config validation
