@@ -613,3 +613,90 @@ policies:
         actions:
           - delete: {}
 ```
+
+---
+
+## Phase 7: Risk Assessment Scanner Deployment
+
+### 7.1 安裝相依工具
+
+```bash
+# Lynis (CIS benchmark)
+dnf install -y lynis  # or: git clone https://github.com/CISOfy/lynis.git /opt/lynis
+
+# Trivy (CVE scan, optional for high-sec environments)
+dnf install -y trivy  # or: rpm -ivh https://github.com/aquasecurity/trivy/releases/...
+
+# Osquery (already installed in Tier 2)
+dnf install -y osquery
+
+# Risk scanner scripts
+cp scripts/risk-scanner.sh /usr/local/bin/
+cp scripts/risk-lib.sh /usr/local/lib/
+cp scripts/risk-score-engine.py /usr/local/bin/
+cp scripts/run-risk-scanner.sh /usr/local/bin/
+chmod +x /usr/local/bin/risk-scanner.sh /usr/local/bin/risk-score-engine.py /usr/local/bin/run-risk-scanner.sh
+```
+
+### 7.2 配置 Filebeat (本機端)
+
+```bash
+cat >> /etc/filebeat/filebeat.yml << 'FB'
+- type: log
+  enabled: true
+  paths:
+    - /var/log/risk-scanner/*.json
+  json.keys_under_root: true
+  json.overwrite_keys: true
+  fields_under_root: true
+  fields:
+    log_type: risk_scan
+FB
+systemctl restart filebeat
+```
+
+### 7.3 配置 Logstash (中央端)
+
+```bash
+cat > /etc/logstash/conf.d/04-risk-scanner.conf << 'LS'
+filter {
+  if [log_type] == "risk_scan" {
+    date { match => ["timestamp", "ISO8601"]; target => "@timestamp" }
+    mutate {
+      rename => { "host" => "[host][name]" "tier" => "[labels][tier]" }
+      convert => { "[overall_risk]" => "float" }
+    }
+  }
+}
+output {
+  if [log_type] == "risk_scan" {
+    elasticsearch {
+      hosts => ["localhost:9200"]
+      index => "risk-scores-%{+YYYY.MM.dd}"
+      document_id => "%{[host][name]}-%{[timestamp]}"
+    }
+  }
+}
+LS
+systemctl restart logstash
+```
+
+### 7.4 排程掃描 (cron)
+
+```bash
+cat > /etc/cron.d/risk-scanner << 'CRON'
+# 每日凌晨 2:00 完整風險掃描
+0 2 * * * root /usr/local/bin/run-risk-scanner.sh --all >> /var/log/risk-scanner/cron.log 2>&1
+# 每週日凌晨 3:00 CVE 掃描 (trivy)
+0 3 * * 0 root /usr/local/bin/run-risk-scanner.sh --cve >> /var/log/risk-scanner/cve-weekly.log 2>&1
+CRON
+```
+
+### 7.5 驗證
+
+```bash
+/usr/local/bin/run-risk-scanner.sh --all
+ls -la /var/log/risk-scanner/
+cat /var/log/risk-scanner/risk-scores-*.json | head -50
+curl -s http://localhost:9200/_cat/indices/risk-scores-*
+```
