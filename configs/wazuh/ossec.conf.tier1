@@ -1,0 +1,39 @@
+<!-- Tier 1 Service VM Wazuh Agent Configuration -->
+<!-- Wazuh Agent + Osquery + Auditd -->
+<ossec_config>
+  <client>
+    <server>
+      <address>WAZUH_MANAGER_PLACEHOLDER</address>
+      <port>1514</port>
+      <protocol>TCP</protocol>
+    </server>
+  </client>
+
+  <syscheck>
+    <frequency>7200</frequency>
+    <directories check_all="yes">/etc,/usr/bin,/usr/sbin,/bin,/sbin</directories>
+    <directories check_all="yes" realtime="yes">/etc/ssh</directories>
+    <ignore>/etc/mtab</ignore>
+  </syscheck>
+
+  <rootcheck>
+    <frequency>3600</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+  </rootcheck>
+
+  <localfile>
+    <log_format>audit</log_format>
+    <location>/var/log/audit/audit.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/var/log/osquery/osqueryd.results.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/messages</location>
+  </localfile>
+</ossec_config>

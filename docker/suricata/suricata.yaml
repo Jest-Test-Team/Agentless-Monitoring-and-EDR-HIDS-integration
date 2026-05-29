@@ -1,0 +1,33 @@
+# Suricata NIDS - Dev Configuration
+# In production, use af-packet with port mirror interface
+%YAML 1.1
+---
+vars:
+  address-groups:
+    TIER0_NETWORK: "[10.0.0.0/8]"
+    EXTERNAL_NET: "!$TIER0_NETWORK"
+
+# For dev: use pcap file input instead of live interface
+pcap-file:
+  enabled: yes
+
+rule-files:
+  - suricata.rules
+  - emerging-exploit.rules
+  - emerging-malware.rules
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - alert:
+            payload: yes
+        - http:
+            extended: yes
+        - dns:
+            query: yes
+        - tls:
+            extended: yes
+        - flow: {}

@@ -1,0 +1,44 @@
+---
+# Tier 0: DRAKVUF VMI + Suricata NIDS + Filebeat
+- name: Tier 0 — DRAKVUF + NIDS deployment
+  hosts: tier0
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+    - ../inventory/group_vars/tier0.yml
+
+  tasks:
+    - name: Run Phase 0 — compatibility check
+      script: ../../scripts/phase-0-check.sh
+      register: compat_result
+      failed_when: compat_result.rc != 0
+      when: run_compat_check | default(true)
+
+    - name: Run Phase 1.1 — KVMI kernel build
+      script: ../../scripts/phase-1-1-kvmi-kernel.sh
+      when: build_kernel | default(false)
+      async: 7200
+      poll: 60
+
+    - name: Run Phase 1.2 — host hardening
+      script: ../../scripts/phase-1-2-host-hardening.sh
+
+    - name: Run Phase 1.3 — Dom0 monitoring
+      script: ../../scripts/phase-1-3-dom0-monitoring.sh
+
+    - name: Run Phase 2.1 — DRAKVUF install
+      script: ../../scripts/phase-2-1-drakvuf-install.sh
+      async: 3600
+      poll: 60
+
+    - name: Run Phase 2.2 — DRAKVUF config
+      script: ../../scripts/phase-2-2-drakvuf-config.sh
+
+    - name: Run Phase 2.4 — port mirror
+      script: ../../scripts/phase-2-4-port-mirror.sh
+
+    - name: Run Phase 3 — Suricata NIDS
+      script: ../../scripts/phase-3-suricata.sh
+
+    - name: Run Phase 5.1 — Filebeat
+      script: ../../scripts/phase-5-1-filebeat.sh

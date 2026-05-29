@@ -1,0 +1,11 @@
+module drakvuf 1.0;
+
+require {
+    type drakvuf_t;
+    type virtd_t;
+    class process { signal };
+    class file { read write };
+}
+
+allow drakvuf_t self:process { signal };
+allow drakvuf_t virtd_t:file { read write };

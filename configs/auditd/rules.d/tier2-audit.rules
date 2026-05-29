@@ -1,0 +1,51 @@
+# Tier 2 Auditd Rules — Bare Metal (full monitoring)
+# Source: TIER-MONITORING-STRATEGY.md
+# Deploy: augenrules --load
+
+# System critical files
+-w /etc/passwd -p wa -k passwd_change
+-w /etc/shadow -p wa -k shadow_change
+-w /etc/sudoers -p wa -k sudoers_change
+-w /etc/group -p wa -k group_change
+
+# Kernel tampering
+-w /etc/modprobe.d/ -p wa -k kernel_modules
+-w /etc/sysconfig/modules/ -p wa -k kernel_modules
+-w /sbin/insmod -p x -k kernel_module_load
+-w /sbin/modprobe -p x -k kernel_module_load
+-w /sbin/rmmod -p x -k kernel_module_unload
+
+# SSH monitoring
+-w /var/log/secure -p wa -k ssh_login
+-w /etc/ssh/sshd_config -p wa -k ssh_config
+
+# Process execution monitoring
+-a always,exit -F arch=b64 -S execve -k process_exec
+-a always,exit -F arch=b32 -S execve -k process_exec
+
+# File permission changes
+-a always,exit -F arch=b64 -S chmod -S fchmod -S chown -S fchown -S lchown -k file_perm
+
+# Package changes
+-w /usr/bin/rpm -p x -k package_change
+-w /usr/bin/dnf -p x -k package_change
+-w /usr/bin/yum -p x -k package_change
+
+# Wazuh agent
+-w /var/ossec/ -p wa -k wazuh_agent
+
+# Osquery
+-w /etc/osquery/ -p wa -k osquery_config
+
+# Network configuration
+-w /etc/hosts -p wa -k network_config
+-w /etc/resolv.conf -p wa -k network_config
+
+# Time changes
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -S clock_settime -k time_change
+
+# User/group administration
+-w /usr/sbin/useradd -p x -k user_admin
+-w /usr/sbin/usermod -p x -k user_admin
+-w /usr/sbin/userdel -p x -k user_admin
+-w /usr/sbin/groupadd -p x -k group_admin

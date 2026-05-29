@@ -1,0 +1,25 @@
+---
+# Tier 3: Lightweight Wazuh Agent + Rsyslog direct to Logstash
+- name: Tier 3 — Dev/test lightweight monitoring
+  hosts: tier3
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+    - ../inventory/group_vars/tier3.yml
+
+  tasks:
+    - name: Run Phase 4 — Wazuh agent (Tier 3)
+      script: ../../scripts/phase-4-wazuh-deploy.sh {{ wazuh_manager }} tier3
+
+    - name: Run Phase 4.1 — Rsyslog direct shipping
+      script: ../../scripts/phase-4-1-rsyslog-tier3.sh
+      environment:
+        INSTALL_WAZUH: "no"
+      when: install_rsyslog_direct | default(false)
+
+    - name: Disable unnecessary Wazuh modules
+      lineinfile:
+        path: /var/ossec/etc/ossec.conf
+        regexp: '<syscheck>'
+        state: absent
+      when: disable_fim | default(true)

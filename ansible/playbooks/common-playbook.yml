@@ -1,0 +1,74 @@
+---
+# Common: Base hardening & deploy.conf for all hosts
+- name: Common base configuration
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Create /etc/agentless directory
+      file:
+        path: /etc/agentless
+        state: directory
+        mode: '0755'
+
+    - name: Deploy deploy.conf
+      copy:
+        src: ../../scripts/deploy.conf
+        dest: /etc/agentless/deploy.conf
+        mode: '0644'
+
+    - name: Ensure SELinux is enforcing
+      selinux:
+        policy: targeted
+        state: enforcing
+      when: ansible_selinux is defined and ansible_selinux.status == 'enabled'
+
+    - name: Set sysctl hardening
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { key: net.ipv4.tcp_syncookies, value: 1 }
+        - { key: net.ipv4.conf.all.rp_filter, value: 1 }
+        - { key: kernel.kptr_restrict, value: 2 }
+        - { key: kernel.dmesg_restrict, value: 1 }
+
+    - name: Disable root SSH password login
+      lineinfile:
+        path: /etc/ssh/sshd_config.d/hardening.conf
+        create: yes
+        line: "{{ item }}"
+      loop:
+        - "PermitRootLogin no"
+        - "PasswordAuthentication no"
+        - "PubkeyAuthentication yes"
+        - "MaxAuthTries 3"
+      notify: restart sshd
+
+    - name: Install common monitoring packages
+      dnf:
+        name:
+          - audit
+          - audit-libs
+          - rsyslog
+          - curl
+          - jq
+        state: present
+
+    - name: Deploy common auditd rules
+      copy:
+        src: ../../configs/auditd/rules.d/
+        dest: /etc/audit/rules.d/
+        mode: '0640'
+      when: tier_label is defined
+
+    - name: Reload auditd rules
+      command: augenrules --load
+      when: tier_label is defined
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted

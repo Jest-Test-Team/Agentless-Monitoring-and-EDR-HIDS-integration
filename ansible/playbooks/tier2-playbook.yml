@@ -1,0 +1,49 @@
+---
+# Tier 2: Wazuh Agent + Osquery + Auditd + AIDE + nftables logging
+- name: Tier 2 — Bare metal HIDS
+  hosts: tier2
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+    - ../inventory/group_vars/tier2.yml
+
+  tasks:
+    - name: Run Phase 4 — Wazuh agent (Tier 2)
+      script: ../../scripts/phase-4-wazuh-deploy.sh {{ wazuh_manager }} tier2
+
+    - name: Deploy Tier 2 auditd rules
+      copy:
+        src: ../../configs/auditd/rules.d/tier2-audit.rules
+        dest: /etc/audit/rules.d/tier2-audit.rules
+        mode: '0640'
+      notify: reload auditd
+
+    - name: Install AIDE
+      dnf:
+        name: aide
+        state: present
+      when: install_aide | default(false)
+
+    - name: Deploy AIDE config
+      copy:
+        src: ../../configs/aide/aide.conf
+        dest: /etc/aide.conf
+        mode: '0644'
+      when: install_aide | default(false)
+
+    - name: Initialize AIDE database
+      command: aide --init
+      args:
+        creates: /var/lib/aide/aide.db.new.gz
+      when: install_aide | default(false)
+
+    - name: Run Phase 2.5 — nftables logging
+      script: ../../scripts/phase-2-5-nftables-log.sh
+      when: install_nftables_logging | default(false)
+
+    - name: Run risk scanner
+      script: ../../scripts/run-risk-scanner.sh --all
+
+  handlers:
+    - name: reload auditd
+      command: augenrules --load

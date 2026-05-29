@@ -1,0 +1,27 @@
+---
+# Tier 1: Wazuh Agent + Osquery + Auditd (internal service VM)
+- name: Tier 1 — Wazuh Agent + Osquery + Auditd
+  hosts: tier1
+  gather_facts: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+    - ../inventory/group_vars/tier1.yml
+
+  tasks:
+    - name: Run Phase 4 — Wazuh agent (Tier 1)
+      script: ../../scripts/phase-4-wazuh-deploy.sh {{ wazuh_manager }} tier1
+
+    - name: Deploy Tier 1 auditd rules
+      copy:
+        src: ../../configs/auditd/rules.d/tier1-audit.rules
+        dest: /etc/audit/rules.d/tier1-audit.rules
+        mode: '0640'
+      notify: reload auditd
+
+    - name: Run risk scanner deployment
+      script: ../../scripts/run-risk-scanner.sh --quick
+      when: deploy_risk_scanner | default(true)
+
+  handlers:
+    - name: reload auditd
+      command: augenrules --load

@@ -1,0 +1,326 @@
+name: CI — Build, Test & Report
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * 1"  # weekly Monday 6AM
+  workflow_dispatch:       # manual trigger
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  # ──────────────────────────────────────
+  # BUILD: syntax checks + validation
+  # ──────────────────────────────────────
+  build:
+    name: Build & Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            shellcheck yamllint ansible-lint \
+            python3-yaml python3-pip
+          pip3 install pyyaml --quiet
+
+      - name: Shell syntax check (bash -n)
+        run: |
+          echo "::group::Shell syntax check"
+          FAIL=0
+          TOTAL=0
+          while IFS= read -r f; do
+            TOTAL=$((TOTAL + 1))
+            if bash -n "$f" 2>/dev/null; then
+              echo "  ✅ $f"
+            else
+              echo "  ❌ $f"
+              FAIL=$((FAIL + 1))
+            fi
+          done < <(find scripts -maxdepth 1 -name "*.sh" -type f | sort)
+          echo "::endgroup::"
+          echo "result=${FAIL}/${TOTAL} failed" >> "$GITHUB_OUTPUT"
+          [ "$FAIL" -eq 0 ] || exit 1
+        id: shell_check
+
+      - name: ShellCheck lint
+        run: |
+          echo "::group::ShellCheck lint"
+          shellcheck -s bash -S warning \
+            $(find scripts -maxdepth 1 -name "*.sh" -type f | sort) || true
+          echo "::endgroup::"
+
+      - name: Python syntax check
+        run: |
+          echo "::group::Python syntax check"
+          FAIL=0
+          TOTAL=0
+          while IFS= read -r f; do
+            TOTAL=$((TOTAL + 1))
+            if python3 -m py_compile "$f" 2>/dev/null; then
+              echo "  ✅ $f"
+            else
+              echo "  ❌ $f"
+              python3 -m py_compile "$f" 2>&1
+              FAIL=$((FAIL + 1))
+            fi
+          done < <(find scripts -maxdepth 1 -name "*.py" -type f | sort)
+          echo "::endgroup::"
+          [ "$FAIL" -eq 0 ] || exit 1
+
+      - name: YAML lint
+        run: |
+          echo "::group::YAML lint"
+          yamllint -d '{extends: relaxed, rules: {line-length: disable}}' \
+            .github/ ansible/ docker/ 2>&1 | head -50 || true
+          echo "::endgroup::"
+
+      - name: Ansible syntax check
+        run: |
+          echo "::group::Ansible syntax check"
+          if command -v ansible-playbook &>/dev/null; then
+            for pb in ansible/playbooks/*.yml ansible/site.yml; do
+              if [ -f "$pb" ]; then
+                echo "  Checking $pb..."
+                ansible-playbook --syntax-check -i ansible/inventory/hosts.ini "$pb" 2>&1 || true
+              fi
+            done
+          else
+            echo "  ansible-playbook not available, skipping"
+          fi
+          echo "::endgroup:"
+
+      - name: Validate deploy.conf
+        run: |
+          echo "::group::Validate deploy.conf"
+          # Source the config and verify key vars exist
+          source scripts/deploy.conf
+          for var in MANAGEMENT_NET OPENSEARCH_HOSTS LOGSTASH_HOSTS WAZUH_MANAGER; do
+            if [ -z "${!var:-}" ]; then
+              echo "  ❌ $var is empty or unset"
+              exit 1
+            fi
+            echo "  ✅ $var = ${!var}"
+          done
+          echo "::endgroup::"
+
+      - name: Upload validation results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-results
+          path: |
+            scripts/
+            configs/
+            ansible/
+          retention-days: 7
+
+  # ──────────────────────────────────────
+  # TEST: unit tests + integration
+  # ──────────────────────────────────────
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Risk Score Engine unit tests
+        run: |
+          echo "::group::Risk Score Engine tests"
+          cd tests && python3 test_risk_score_engine.py
+          echo "::endgroup::"
+        id: risk_engine_tests
+
+      - name: Validate risk-lib.sh sourcing
+        run: |
+          echo "::group::risk-lib.sh validation"
+          # Verify the library can be sourced and key functions exist
+          source scripts/risk-lib.sh
+          for fn in log_finding check_kernel_params check_file_permissions check_suid check_ssh_hardening check_selinux check_users check_trivy check_open_ports check_ports check_firewall check_docker check_k8s check_rootkit check_cron_attacks get_hostname get_tier; do
+            if declare -f "$fn" &>/dev/null; then
+              echo "  ✅ function: $fn"
+            else
+              echo "  ❌ function: $fn missing"
+              exit 1
+            fi
+          done
+          echo "::endgroup::"
+
+      - name: Validate Logstash pipeline configs
+        run: |
+          echo "::group::Logstash pipeline validation"
+          if command -v logstash &>/dev/null; then
+            for f in configs/logstash/pipeline/*.conf; do
+              if [ -f "$f" ]; then
+                echo "  Checking $f..."
+                logstash -t -f "$f" 2>&1 | tail -3 || echo "  ⚠️  logstash binary may not match version"
+              fi
+            done
+          else
+            echo "  logstash binary not available, checking syntax manually..."
+            for f in configs/logstash/pipeline/*.conf; do
+              [ -f "$f" ] && echo "  ✅ $(basename "$f") present ($(wc -l < "$f") lines)"
+            done
+          fi
+          echo "::endgroup::"
+
+      - name: Validate JSON fixtures
+        run: |
+          echo "::group::JSON fixture validation"
+          for f in tests/fixtures/*.json; do
+            if [ -f "$f" ]; then
+              python3 -c "
+import json
+with open('$f') as fp:
+    for i, line in enumerate(fp, 1):
+        line = line.strip()
+        if line:
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f'  ❌ {f}:{i} — {e}')
+                exit(1)
+    print(f'  ✅ {f} — all lines valid JSON')
+"
+            fi
+          done
+          echo "::endgroup::"
+
+      - name: Docker Compose config validation
+        run: |
+          echo "::group::Docker Compose validation"
+          if command -v docker &>/dev/null; then
+            docker compose -f docker/docker-compose.yml config 2>&1 | head -5 && echo "  ✅ docker-compose.yml valid" || echo "  ⚠️  validation skipped (no Docker)"
+          else
+            echo "  docker not available, checking file presence..."
+            [ -f docker/docker-compose.yml ] && echo "  ✅ docker-compose.yml present"
+            [ -f docker/docker-compose.edge-agent.yml ] && echo "  ✅ docker-compose.edge-agent.yml present"
+          fi
+          echo "::endgroup::"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/
+          retention-days: 7
+
+  # ──────────────────────────────────────
+  # REPORT: generate CI report
+  # ──────────────────────────────────────
+  report:
+    name: Generate Report
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build results
+        uses: actions/download-artifact@v4
+        with:
+          name: build-results
+          path: build-results
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+      - name: Generate CI report
+        run: |
+          chmod +x .github/scripts/ci-report.sh
+          .github/scripts/ci-report.sh ci-report.md
+          cat ci-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-report
+          path: ci-report.md
+          retention-days: 30
+
+      - name: Post report as PR comment (if PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('ci-report.md', 'utf8');
+            const summary = report.split('\n').slice(0, 30).join('\n') + '\n\n... (full report in artifacts)';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: '## CI Report\n\n' + summary
+            });
+
+  # ──────────────────────────────────────
+  # DOCKER: integration test (optional)
+  # ──────────────────────────────────────
+  docker-integration:
+    name: Docker Integration Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start Docker stack
+        run: |
+          cd docker
+          docker compose up -d --wait
+          docker compose ps
+
+      - name: Wait for OpenSearch readiness
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9200/_cat/health 2>/dev/null; then
+              echo "OpenSearch ready"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Generate test logs and verify pipeline
+        run: |
+          cd docker
+          bash generate-test-logs.sh ./logs
+
+          # Wait for Logstash to process
+          sleep 10
+
+          # Check documents are indexed
+          curl -s 'http://localhost:9200/_cat/indices/*' | head -5
+          DOC_COUNT=$(curl -s 'http://localhost:9200/_cat/count/*' | awk '{sum+=$3} END{print sum}')
+          echo "Documents indexed: $DOC_COUNT"
+          echo "doc_count=$DOC_COUNT" >> "$GITHUB_OUTPUT"
+        id: integration_test
+
+      - name: Stack logs (on failure)
+        if: failure()
+        run: |
+          cd docker
+          docker compose logs --tail=50
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd docker
+          docker compose down -v

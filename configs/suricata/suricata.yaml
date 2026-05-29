@@ -1,0 +1,61 @@
+%YAML 1.1
+---
+vars:
+  address-groups:
+    TIER0_NETWORK: "[192.168.100.0/24]"
+    EXTERNAL_NET: "!$TIER0_NETWORK"
+
+af-packet:
+  - interface: bond0.100
+    cluster-id: 99
+    cluster-type: cluster_qm
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    buffer-size: 512000
+    automatic: no
+
+rule-files:
+  - suricata.rules
+  - emerging-exploit.rules
+  - emerging-malware.rules
+  - emerging-web_server.rules
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+        - http:
+            extended: yes
+            cors: no
+        - dns:
+            query: yes
+            rdata: yes
+        - tls:
+            extended: yes
+        - flow:
+            enabled: yes
+        - stats:
+            enabled: yes
+            totals: yes
+            threads: no
+
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+      detection-threshold: 10
+    dns:
+      enabled: yes
+    http:
+      enabled: yes
+      libhtp:
+        default-config:
+          personality: minimal
+          request-body-limit: 4096
+          response-body-limit: 4096
