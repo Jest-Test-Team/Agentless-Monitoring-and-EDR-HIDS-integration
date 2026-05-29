@@ -60,6 +60,7 @@
 | 9 | Kafka 維運成本 | Medium | 中（Redis Stream 替代） | 極低 |
 | 10 | DR/備份 | Medium | 高（Active/Standby + State backup） | 中 |
 | 11 | 合規/稽核 | Medium | 中（Sanitizer + Field-level ACL） | 低 |
+| 12 | 缺乏風險評分 | Medium | 低（Risk Scanner Script + Lynis Wrapper） | 極低 |
 
 ### 投入成本 vs 安全效益
 
