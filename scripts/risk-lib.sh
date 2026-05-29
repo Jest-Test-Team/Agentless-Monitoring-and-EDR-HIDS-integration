@@ -386,9 +386,9 @@ write_findings_json() {
     json=$(python3 /usr/local/bin/risk-score-engine.py \
         --findings <(printf '%s\n' "${FINDINGS[@]}") \
         --hostname "$hostname" \
-        --tier "$tier" \
-        --overall-risk "$overall_risk" \
-        --severity "$severity")
+        --tier "$tier")
+    overall_risk=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('overall_risk', 0))")
+    severity=$(echo "$json" | python3 -c "import json,sys; print(json.load(sys.stdin).get('severity', 'unknown'))")
     echo "$json" > "$output_file"
     echo "  [*] Risk score written to: $output_file"
     echo "  [*] Overall risk: $overall_risk ($severity)"
