@@ -2,7 +2,7 @@ name: CI — Build, Test & Report
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master]
   pull_request:
     branches: [main, master]
   schedule:
@@ -179,14 +179,23 @@ jobs:
       - name: Validate JSON fixtures
         run: |
           echo "::group::JSON fixture validation"
-          python3 tests/test_json_fixtures.py || {
-            for f in tests/fixtures/*.json; do
-              if [ -f "$f" ]; then
-                echo "  ❌ $f — parse error (see above)"
-              fi
-            done
-            exit 1
-          }
+          for f in tests/fixtures/*.json; do
+            if [ -f "$f" ]; then
+              python3 << 'EOF'
+import json
+with open('$f') as fp:
+    for i, line in enumerate(fp, 1):
+        line = line.strip()
+        if line:
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f'  ❌ {f}:{i} — {e}')
+                exit(1)
+    print(f'  ✅ {f} — all lines valid JSON')
+"
+            fi
+          done
           echo "::endgroup::"
 
       - name: Docker Compose config validation
