@@ -135,7 +135,7 @@ while IFS='|' read -r tier components; do
     missing=0
     missing_list=""
     for comp in $components; do
-        if [ -f "$comp" ] || [ -d "$comp" ]; then
+        if [ -f "$comp" ] || [ -d "$comp" ] || [ -f "scripts/$comp" ] || [ -d "scripts/$comp" ]; then
             present=$((present + 1))
         else
             missing=$((missing + 1))
