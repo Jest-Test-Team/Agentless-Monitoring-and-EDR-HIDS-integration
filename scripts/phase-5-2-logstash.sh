@@ -2,7 +2,20 @@
 # Phase 5.2: Logstash Pipeline Configuration (Central Server)
 set -euo pipefail
 
-OPENSEARCH_HOST="${1:-10.0.0.10:9200}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+OPENSEARCH_HOST="${1:-${OPENSEARCH_HOSTS%%,*}}"
 
 echo "[*] Phase 5.2: Logstash Pipeline Setup"
 echo "  OpenSearch target: $OPENSEARCH_HOST"
