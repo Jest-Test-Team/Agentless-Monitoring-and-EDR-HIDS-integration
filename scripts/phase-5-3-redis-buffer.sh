@@ -2,6 +2,23 @@
 # Phase 5.3: Redis Buffer (Kafka alternative for < 10K events/sec)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+REDIS_PORT="${REDIS_PORT:-6379}"
+REDIS_BIND="${REDIS_BIND:-0.0.0.0}"
+REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-10gb}"
+
 echo "[*] Phase 5.3: Redis Buffer Setup"
 echo "========================================"
 
