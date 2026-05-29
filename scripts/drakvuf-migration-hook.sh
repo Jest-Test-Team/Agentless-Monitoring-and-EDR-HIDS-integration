@@ -4,10 +4,18 @@
 # This is a best-effort to save/restore state
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
 GUEST="${1:?Usage: $0 <guest-name> <action>}"
 ACTION="${2:?Actions: pre-migrate | post-migrate | pre-start | post-stop}"
 
-BACKUP_DIR="/var/lib/drakvuf/state-backups/${GUEST}"
+BACKUP_DIR="${DRAKVUF_STATE_DIR:-/var/lib/drakvuf/state-backups}/${GUEST}"
 STATE_SOCKET="/tmp/drakvuf-${GUEST}.sock"
 
 echo "[*] Migration Hook: ${GUEST} -> ${ACTION}"
