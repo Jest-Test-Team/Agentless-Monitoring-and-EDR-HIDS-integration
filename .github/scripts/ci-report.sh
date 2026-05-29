@@ -191,9 +191,10 @@ REPORT
 
 if [ "$YAML_FAIL" -gt 0 ]; then
     echo "**${YAML_FAIL}/${YAML_TOTAL} files FAILED**" >> "$REPORT_FILE"
-    for f in "${!YAML_RESULTS[@]}"; do
-        [ "${YAML_RESULTS[$f]}" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
-    done
+    while IFS='|' read -r f result; do
+        case "$f" in ---*) continue ;; esac
+        [ "$result" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
+    done < "$TMPDIR/yaml.txt"
 else
     echo "**All ${YAML_TOTAL} YAML files pass syntax check** ✅" >> "$REPORT_FILE"
 fi
