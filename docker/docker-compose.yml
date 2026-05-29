@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  # ── OpenSearch (single-node for dev) ──
+  opensearch:
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-2.18.0}
+    container_name: os-security-events
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS:- -Xms1g -Xmx1g}
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - os-data:/usr/share/opensearch/data
+      - ./opensearch/security:/usr/share/opensearch/config/opensearch-security:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  # ── OpenSearch Dashboards ──
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION:-2.18.0}
+    container_name: os-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  # ── Redis Buffer ──
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: os-redis-buffer
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save 300 1
+    volumes:
+      - redis-data:/data
+
+  # ── Logstash (Unified Pipeline) ──
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${LOGSTASH_VERSION:-8.15.0}
+    container_name: os-logstash
+    ports:
+      - "5044:5044"
+      - "5000:5000"
+    environment:
+      - LS_JAVA_OPTS=${LOGSTASH_JAVA_OPTS:- -Xms512m -Xmx512m}
+      - XPACK_MONITORING_ENABLED=false
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ../docker/logs:/var/log/agentless:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  # ── DRAKVUF Test Log Generator ──
+  log-generator:
+    image: alpine:latest
+    container_name: os-log-generator
+    volumes:
+      - ./generate-test-logs.sh:/generate-test-logs.sh:ro
+      - ./logs:/var/log/agentless:rw
+    command: >
+      sh -c "apk add --no-cache bash &&
+             while true; do
+               bash /generate-test-logs.sh /var/log/agentless;
+               sleep 10;
+             done"
+    depends_on:
+      - logstash
+
+volumes:
+  os-data:
+  redis-data:
