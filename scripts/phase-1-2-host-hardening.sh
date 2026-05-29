@@ -54,8 +54,10 @@ if command -v firewall-cmd &>/dev/null; then
 fi
 
 # 3. SELinux Policy
+SELINUX_DIR="/etc/selinux"
+mkdir -p "$SELINUX_DIR"
 if command -v checkmodule &>/dev/null; then
-    TE_FILE="/tmp/drakvuf.te"
+    TE_FILE="$SELINUX_DIR/drakvuf.te"
     cat > "$TE_FILE" << 'SELINUX'
 module drakvuf 1.0;
 require {
@@ -67,11 +69,12 @@ require {
 allow drakvuf_t self:process { signal };
 allow drakvuf_t virtd_t:file { read write };
 SELINUX
-    checkmodule -M -m -o /tmp/drakvuf.mod "$TE_FILE"
-    semodule_package -o /tmp/drakvuf.pp -m /tmp/drakvuf.mod
-    semodule -i /tmp/drakvuf.pp
-    rm -f /tmp/drakvuf.{te,mod,pp}
-    echo "[+] SELinux policy loaded"
+    MOD_DIR=$(mktemp -d)
+    checkmodule -M -m -o "$MOD_DIR/drakvuf.mod" "$TE_FILE"
+    semodule_package -o "$MOD_DIR/drakvuf.pp" -m "$MOD_DIR/drakvuf.mod"
+    semodule -i "$MOD_DIR/drakvuf.pp"
+    rm -rf "$MOD_DIR"
+    echo "[+] SELinux policy loaded from $TE_FILE"
 fi
 
 # 4. Auditd Rules
