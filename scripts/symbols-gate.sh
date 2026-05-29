@@ -3,18 +3,34 @@
 # Run BEFORE any production kernel update
 set -euo pipefail
 
-GUEST="${1:?Usage: $0 <guest-name> <new-system-map> <old-system-map>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+GUEST="${1:?Usage: $0 <guest-name> <new-system-map> [old-system-map]}"
 NEW_MAP="$2"
-OLD_MAP="$3"
+OLD_MAP="${3:-}"
 
 echo "[*] Symbol Validation Gate for ${GUEST}"
 echo "  New: $NEW_MAP"
-echo "  Old: $OLD_MAP"
+[ -n "$OLD_MAP" ] && echo "  Old: $OLD_MAP"
 echo "========================================"
+
+# Check dependencies
+for dep in grep awk wc head socat; do
+    if ! command -v "$dep" &>/dev/null; then
+        echo "[FAIL] Required dependency not found: $dep"
+        exit 1
+    fi
+done
 
 # 1. Check file exists
 [ -f "$NEW_MAP" ] || { echo "[FAIL] New symbol file not found"; exit 1; }
-[ -f "$OLD_MAP" ] || echo "[WARN] Old symbol file not found, skipping diff"
+[ -z "$OLD_MAP" ] || [ -f "$OLD_MAP" ] || echo "[WARN] Old symbol file not found, skipping diff"
 
 # 2. Validate format (Linux system.map)
 echo "[*] Validating system.map format..."
@@ -32,6 +48,10 @@ TOTAL=$(wc -l < "$NEW_MAP")
 echo "[*] Total symbols: $TOTAL"
 
 # 4. Check critical symbols exist
+# sys_call_table was renamed in kernel >=6.2:
+#   x86_64 -> __x64_sys_call_table
+#   ia32   -> __ia32_sys_call_table
+# Check both the legacy name and the new name.
 CRITICAL_SYMBOLS=(
     "_stext"
     "_etext"
@@ -47,8 +67,12 @@ CRITICAL_SYMBOLS=(
 
 MISSING=0
 for sym in "${CRITICAL_SYMBOLS[@]}"; do
-    if grep -qE "\s+[A-Za-z]\s+${sym}$" "$NEW_MAP"; then
+    if grep -qE "\s+[A-Za-z]\s+${sym}$" "$NEW_MAP" 2>/dev/null; then
         echo "[OK] Critical symbol found: $sym"
+    elif [ "$sym" = "sys_call_table" ] && grep -qE "\s+[A-Za-z]\s+__x64_sys_call_table$" "$NEW_MAP" 2>/dev/null; then
+        echo "[OK] Critical symbol found: sys_call_table -> __x64_sys_call_table (kernel >=6.2)"
+    elif [ "$sym" = "sys_call_table" ] && grep -qE "\s+[A-Za-z]\s+__ia32_sys_call_table$" "$NEW_MAP" 2>/dev/null; then
+        echo "[OK] Critical symbol found: sys_call_table -> __ia32_sys_call_table (kernel >=6.2)"
     else
         echo "[FAIL] Critical symbol missing: $sym"
         MISSING=$((MISSING+1))
