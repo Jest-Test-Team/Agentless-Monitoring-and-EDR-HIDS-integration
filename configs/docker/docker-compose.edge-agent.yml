@@ -1,0 +1,58 @@
+# Edge Agent Sidecar (Docker Compose)
+# For containerized/immutable hosts that cannot run a full Wazuh agent
+# Provides rsyslog-based log shipping to the central Logstash pipeline
+#
+# Usage:
+#   docker compose -f docker-compose.edge-agent.yml up -d
+#   docker compose -f docker-compose.edge-agent.yml logs -f
+
+version: "3.8"
+
+services:
+  # Rsyslog sidecar — ships host logs to Logstash
+  rsyslog:
+    image: alpine:3.19
+    container_name: edge-rsyslog
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/log:/host/var/log:ro
+      - ./rsyslog-edge.conf:/etc/rsyslog.conf:ro
+    command: >
+      sh -c "
+        apk add --no-cache rsyslog &&
+        rsyslogd -n
+      "
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Healthcheck sidecar — periodic health reports
+  healthcheck:
+    image: alpine:3.19
+    container_name: edge-healthcheck
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+    command: >
+      sh -c "
+        apk add --no-cache curl docker-cli &&
+        while true; do
+          echo \"HEALTH \$(hostname) \$(date -Iseconds) mem:\$(free -m | awk '/Mem/{print \$3}') disk:\$(df -h / | awk 'NR==2{print \$5}') dockers:\$(docker ps -q | wc -l)\" >> /dev/console;
+          sleep 300;
+        done
+      "
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "tcp://localhost:5514"
+        tag: "edge-health"
+
+networks:
+  default:
+    name: agentless-edge
+    external: false
