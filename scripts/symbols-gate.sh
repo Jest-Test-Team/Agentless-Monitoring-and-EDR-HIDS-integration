@@ -80,7 +80,7 @@ for sym in "${CRITICAL_SYMBOLS[@]}"; do
 done
 
 # 5. Diff with old (if available)
-if [ -f "$OLD_MAP" ]; then
+if [ -n "$OLD_MAP" ] && [ -f "$OLD_MAP" ]; then
     echo "[*] Comparing with old symbols..."
     OLD_TOTAL=$(wc -l < "$OLD_MAP")
     DIFF=$((TOTAL - OLD_TOTAL))
@@ -90,6 +90,13 @@ if [ -f "$OLD_MAP" ]; then
     for sym in "init_task" "sys_call_table"; do
         OLD_ADDR=$(grep -E "\s+[A-Za-z]\s+${sym}$" "$OLD_MAP" | awk '{print $1}')
         NEW_ADDR=$(grep -E "\s+[A-Za-z]\s+${sym}$" "$NEW_MAP" | awk '{print $1}')
+        # Also check renamed sys_call_table on modern kernels
+        if [ -z "$OLD_ADDR" ] && [ "$sym" = "sys_call_table" ]; then
+            OLD_ADDR=$(grep -E "\s+[A-Za-z]\s+__x64_sys_call_table$" "$OLD_MAP" | awk '{print $1}')
+        fi
+        if [ -z "$NEW_ADDR" ] && [ "$sym" = "sys_call_table" ]; then
+            NEW_ADDR=$(grep -E "\s+[A-Za-z]\s+__x64_sys_call_table$" "$NEW_MAP" | awk '{print $1}')
+        fi
         if [ -n "$OLD_ADDR" ] && [ -n "$NEW_ADDR" ] && [ "$OLD_ADDR" != "$NEW_ADDR" ]; then
             echo "[INFO] Symbol ${sym} moved: ${OLD_ADDR} -> ${NEW_ADDR}"
         fi
