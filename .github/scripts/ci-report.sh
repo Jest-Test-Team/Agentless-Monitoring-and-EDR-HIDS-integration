@@ -176,9 +176,10 @@ REPORT
 
 if [ "$PY_FAIL" -gt 0 ]; then
     echo "**${PY_FAIL}/${PY_TOTAL} scripts FAILED**" >> "$REPORT_FILE"
-    for f in "${!PY_RESULTS[@]}"; do
-        [ "${PY_RESULTS[$f]}" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
-    done
+    while IFS='|' read -r f result; do
+        case "$f" in ---*) continue ;; esac
+        [ "$result" = "FAIL" ] && echo "- \`$f\` — SYNTAX ERROR" >> "$REPORT_FILE"
+    done < "$TMPDIR/python.txt"
 else
     echo "**All ${PY_TOTAL} Python scripts pass syntax check** ✅" >> "$REPORT_FILE"
 fi
