@@ -15,9 +15,6 @@ risk_score_engine = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(risk_score_engine)
 compute_overall_risk = risk_score_engine.compute_overall_risk
 
-FIXTURES_DIR = os.path.join(os.path.dirname(__file__), 'fixtures')
-
-
 def load_fixture(name):
     path = os.path.join(FIXTURES_DIR, name)
     findings = []
