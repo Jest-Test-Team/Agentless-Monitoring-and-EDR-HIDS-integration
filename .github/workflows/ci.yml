@@ -192,7 +192,7 @@ with open('$f') as fp:
             except json.JSONDecodeError as e:
                 print(f'  ❌ {f}:{i} — {e}')
                 exit(1)
-    print(f'  ✅ {f} — all lines valid JSON')
+    print(f'  {f} — all lines valid JSON')
 "
             fi
           done
