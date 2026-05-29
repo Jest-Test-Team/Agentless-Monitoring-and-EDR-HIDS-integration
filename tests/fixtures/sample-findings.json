@@ -1,0 +1,9 @@
+{"category":"system_hardening","check_id":"KRN-001","severity":"high","description":"Kernel parameters not hardened","detail":"kernel.kptr_restrict = 0","recommendation":"Set kernel.kptr_restrict = 2","weight":2}
+{"category":"system_hardening","check_id":"SSH-001","severity":"medium","description":"SSH root login permitted","detail":"PermitRootLogin yes","recommendation":"Set PermitRootLogin no","weight":1}
+{"category":"cve_vulnerabilities","check_id":"CVE-2024-1234","severity":"critical","description":"Critical kernel vulnerability","detail":"kernel version 5.14.0","recommendation":"Update kernel to latest","weight":3}
+{"category":"cve_vulnerabilities","check_id":"CVE-2024-5678","severity":"high","description":"OpenSSL vulnerability","detail":"OpenSSL 1.1.1","recommendation":"Update OpenSSL to 3.x","weight":2}
+{"category":"network_security","check_id":"NET-001","severity":"medium","description":"Firewall not enabled","detail":"iptables not active","recommendation":"Enable and configure firewalld","weight":1}
+{"category":"network_security","check_id":"NET-002","severity":"low","description":"Unused open port 8080","detail":"Port 8080 listening on 0.0.0.0","recommendation":"Close unused ports","weight":1}
+{"category":"container_security","check_id":"CON-001","severity":"high","description":"Container running as root","detail":"Docker container with user root","recommendation":"Use non-root user in container","weight":2}
+{"category":"advanced_threats","check_id":"THR-001","severity":"critical","description":"Rootkit detected","detail":"Suspicious kernel module loaded","recommendation":"Immediate incident response required","weight":5}
+{"category":"advanced_threats","check_id":"THR-002","severity":"high","description":"Suspicious cron job","detail":"Cron job in /var/spool/cron pointing to /tmp","recommendation":"Investigate and remove suspicious cron","weight":2}
