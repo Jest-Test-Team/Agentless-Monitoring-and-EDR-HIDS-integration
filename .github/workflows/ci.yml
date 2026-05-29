@@ -148,7 +148,7 @@ jobs:
           echo "::group::risk-lib.sh validation"
           # Verify the library can be sourced and key functions exist
           source scripts/risk-lib.sh
-          for fn in log_finding check_kernel_params check_file_permissions check_suid check_ssh_hardening check_selinux check_users check_trivy check_open_ports check_ports check_firewall check_docker check_k8s check_rootkit check_cron_attacks get_hostname get_tier; do
+          for fn in log_finding check_kernel_params check_file_permissions check_suid check_ssh_config check_selinux check_users check_trivy check_listening_ports check_firewall check_docker check_k8s check_rootkit check_cron_anomalies check_file_perms write_findings_json; do
             if declare -f "$fn" &>/dev/null; then
               echo "  ✅ function: $fn"
             else

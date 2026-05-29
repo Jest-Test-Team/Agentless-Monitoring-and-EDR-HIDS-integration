@@ -36,7 +36,7 @@ check_kernel_params() {
     fi
 }
 
-check_file_perms() {
+check_file_permissions() {
     CATEGORY="system_hardening"
     local path="$1" expected_perm="$2" desc="$3" rec="$4"
     if [ ! -e "$path" ]; then
@@ -51,6 +51,9 @@ check_file_perms() {
         fail "FILE_$(echo "$path" | tr '/' '_')" "$desc: $actual (expected: ≤ $expected_perm)" "$rec"
     fi
 }
+
+# backward compat alias
+check_file_perms() { check_file_permissions "$@"; }
 
 check_suid() {
     CATEGORY="system_hardening"
