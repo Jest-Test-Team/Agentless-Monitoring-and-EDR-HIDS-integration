@@ -1,0 +1,51 @@
+# Filebeat configuration — Tier 0 DRAKVUF + Suricata log shipping
+# Deploy to /etc/filebeat/filebeat.yml on each Tier 0 Host
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/drakvuf/*.json
+  json.keys_under_root: true
+  json.overwrite_keys: true
+  json.add_error_key: true
+  fields_under_root: true
+  fields:
+    log_type: drakvuf
+    tier: tier0
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/suricata/eve.json
+  json.keys_under_root: true
+  json.overwrite_keys: true
+  fields_under_root: true
+  fields:
+    log_type: suricata
+    tier: tier0
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/risk-scanner/*.json
+  json.keys_under_root: true
+  json.overwrite_keys: true
+  fields_under_root: true
+  fields:
+    log_type: risk_scan
+    tier: tier0
+
+output.logstash:
+  hosts: ["10.0.0.20:5044", "10.0.0.21:5044"]
+  loadbalance: true
+  ssl.enabled: false
+  ttl: 300s
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
