@@ -2,9 +2,17 @@
 # Utility: DRAKVUF State Backup (periodic introspection state persistence)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
 GUEST="${1:?Usage: $0 <guest-name> [interval-seconds]}"
 INTERVAL="${2:-300}"
-BACKUP_DIR="/var/lib/drakvuf/state-backups/${GUEST}"
+BACKUP_DIR="${DRAKVUF_STATE_DIR:-/var/lib/drakvuf/state-backups}/${GUEST}"
 STATE_SOCKET="/tmp/drakvuf-${GUEST}.sock"
 
 mkdir -p "$BACKUP_DIR"
