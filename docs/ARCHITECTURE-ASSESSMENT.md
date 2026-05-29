@@ -123,7 +123,7 @@
 | 角色 | 人數 | 技能要求 |
 |------|------|----------|
 | Linux Kernel Engineer | 1 | KVMI kernel patch maintenance, symbol table management |
-| Security Engineer | 1 | Wazuh rules, Suricata rules, Logstash pipeline |
+| Security Engineer | 1 | Wazuh rules, Suricata rules, Logstash pipeline, Risk Scanner 腳本維護 |
 | DevOps/SRE | 1 | OpenSearch cluster, Kafka/Redis, monitoring |
 | SOC Analyst | 1+ | Cross-tier correlation, incident response |
 
