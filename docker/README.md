@@ -43,7 +43,8 @@ docker/
 ├── logstash/pipeline/               # Logstash pipeline 配置
 │   ├── 01-inputs.conf
 │   ├── 02-filters.conf
-│   └── 03-outputs.conf
+│   ├── 03-outputs.conf
+│   └── 04-risk-scanner.conf
 ├── opensearch/security/             # OpenSearch 安全配置
 │   └── roles.yml
 ├── suricata/                        # Suricata 測試配置
