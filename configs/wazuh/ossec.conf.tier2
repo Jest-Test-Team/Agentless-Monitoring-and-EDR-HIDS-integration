@@ -1,0 +1,37 @@
+<!-- Tier 2 Bare Metal Wazuh Agent Configuration -->
+<!-- Full monitoring: FIM + rootcheck + Auditd + Osquery -->
+<ossec_config>
+  <client>
+    <server>
+      <address>WAZUH_MANAGER_PLACEHOLDER</address>
+      <port>1514</port>
+      <protocol>TCP</protocol>
+    </server>
+  </client>
+
+  <syscheck>
+    <frequency>3600</frequency>
+    <directories check_all="yes" realtime="yes">/etc,/usr/bin,/usr/sbin,/bin,/sbin,/root,/home</directories>
+  </syscheck>
+
+  <rootcheck>
+    <frequency>1800</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+  </rootcheck>
+
+  <localfile>
+    <log_format>audit</log_format>
+    <location>/var/log/audit/audit.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/var/log/osquery/osqueryd.results.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/messages</location>
+  </localfile>
+</ossec_config>
