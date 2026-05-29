@@ -109,6 +109,13 @@
 6. **Kafka 緩衝層**：除非日誌量 > 10K events/sec，否則 Redis Stream 足夠
 7. **Live Migration**：Tier 0 VM 必須 pinned，不要嘗試支援 live migration
 
+### 建議新增：Risk Assessment Scanner
+
+8. **Risk Scanner on Tier 1/2**：在 Tier 1 VM 和 Tier 2 Bare Metal 部署 risk-scanner（包裝 Lynis + osquery + trivy），排程每日掃描，結果 JSON 直送 OpenSearch，建立 Risk Score Dashboard
+   - 零架構變動（共用現有 Filebeat + Logstash pipeline）
+   - 唯一新 index: `risk-scores-*`
+   - 提供 5 大類 100+ 項檢查 + 0-100 評分 + SIEM 報表
+
 ---
 
 ## 資源需求估算
