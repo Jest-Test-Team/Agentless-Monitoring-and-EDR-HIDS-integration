@@ -1,0 +1,22 @@
+<!-- Tier 3 Dev/Test Lightweight Wazuh Agent Configuration -->
+<!-- Minimal: rootcheck + syslog only -->
+<ossec_config>
+  <client>
+    <server>
+      <address>WAZUH_MANAGER_PLACEHOLDER</address>
+      <port>1514</port>
+      <protocol>TCP</protocol>
+    </server>
+  </client>
+
+  <rootcheck>
+    <frequency>7200</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+  </rootcheck>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/messages</location>
+  </localfile>
+</ossec_config>
