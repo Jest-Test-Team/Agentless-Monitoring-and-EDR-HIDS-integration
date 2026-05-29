@@ -2,7 +2,20 @@
 # Phase 2.2: DRAKVUF Configuration + systemd Service
 set -euo pipefail
 
-DRAKVUF_BIN="/usr/local/bin/drakvuf"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+DRAKVUF_BIN="${DRAKVUF_BIN:-/usr/local/bin/drakvuf}"
 
 echo "[*] Phase 2.2: DRAKVUF Configuration"
 echo "========================================"
