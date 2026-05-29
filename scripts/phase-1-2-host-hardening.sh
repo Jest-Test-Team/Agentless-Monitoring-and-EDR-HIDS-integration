@@ -3,6 +3,25 @@
 # Run on Dom0 / Tier 0 Host after KVMI kernel boot
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_PATH="/etc/agentless/deploy.conf"
+if [ -f "$CONF_PATH" ]; then
+    source "$CONF_PATH"
+elif [ -f "$SCRIPT_DIR/deploy.conf" ]; then
+    source "$SCRIPT_DIR/deploy.conf"
+fi
+
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
+
+LOGSTASH_PORT="${LOGSTASH_BEATS_PORT:-5044}"
+OS_PORT="${OPENSEARCH_API_PORT:-9200}"
+WAZUH_AGENT_PORT="${WAZUH_AGENT_PORT:-1514}"
+WAZUH_CLUSTER_PORT="${WAZUH_CLUSTER_PORT:-1515}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+
 echo "[*] Phase 1.2: Host OS Hardening"
 echo "========================================"
 
