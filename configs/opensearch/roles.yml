@@ -1,0 +1,44 @@
+# OpenSearch Security Roles
+# Deploy to: /usr/share/opensearch/config/opensearch-security/roles.yml
+
+---
+# VMI Admin — full access to security events and VMI data
+vmi_admin:
+  reserved: true
+  cluster_permissions:
+    - cluster_composite_ops
+    - cluster_monitor
+  index_permissions:
+    - index_patterns:
+        - "security-events-*"
+        - "risk-scores-*"
+        - "wazuh-alerts-*"
+      allowed_actions:
+        - "indices_all"
+
+# SOC Analyst — read-only access to security indices
+soc_analyst:
+  reserved: true
+  index_permissions:
+    - index_patterns:
+        - "security-events-*"
+        - "risk-scores-*"
+        - "wazuh-alerts-*"
+      allowed_actions:
+        - "read"
+        - "indices:data/read/search*"
+        - "indices:data/read/scroll*"
+      field_level_security:
+        - exclude:
+            - "[process][command_line]"
+            - "[process][environment]"
+
+# Compliance Auditor — read-only, limited fields
+compliance_auditor:
+  reserved: true
+  index_permissions:
+    - index_patterns:
+        - "risk-scores-*"
+      allowed_actions:
+        - "read"
+        - "indices:data/read/search*"
